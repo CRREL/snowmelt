@@ -41,7 +41,8 @@ def main():
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
         default=False)
     parser.add_option('-d', '--date', dest='process_date', 
-        default=datetime.datetime.now())
+        default=datetime.datetime.now().strftime('%Y%m%d'), 
+        help='Date should be in YYYYMMDD format.')
     parser.add_option('-t', '--dataset', dest='dataset_type', default='zz')
 
     options, args = parser.parse_args()
@@ -51,6 +52,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    # Grab extents based on division and district inputs.
     division, district = args
     try:
         extents_list = config.EXTENTS[division][district]
@@ -59,6 +61,15 @@ def main():
                'Division "{0}", District "{1}"').format(division, district)
         sys.exit(1)
     verbose_print('Extents list:\n' + '\n'.join([str(ext) for ext in extents_list]))
+
+    # Parse out our processing date.
+    try:
+        options.process_date = datetime.datetime.strptime(options.process_date,'%Y%m%d')
+    except:
+        print 'Couldn\'t parse time input.  Please use YYYYMMDD format.'
+        sys.exit(1)
+
+    verbose_print(options.process_date)
 
     # Run the actual grid processing.
     snowmelt.process_extents(division, options.process_date, 
