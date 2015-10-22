@@ -44,10 +44,12 @@ def main():
         default=datetime.datetime.now().strftime('%Y%m%d'), 
         help='Date should be in YYYYMMDD format.')
     parser.add_option('-t', '--dataset', dest='dataset_type', default='zz')
+    parser.add_option('-a', '--all', dest='all_extents', action='store_true',
+        default=False)
 
     options, args = parser.parse_args()
 
-    if len(args) != 2:
+    if (not options.all_extents) and len(args) != 2:
         print "Error: Script requires two arguments\n"
         parser.print_help()
         sys.exit(1)

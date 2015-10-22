@@ -54,7 +54,7 @@ def process_extents(div_name, process_date, dataset_type, extents_list):
     tmpdir = os.path.join(projresdir,"tmp" + dstr)
     os.mkdir(tmpdir)
 
-    PropDict = SetProps(process_date,div_name)
+    PropDict = SetProps(process_date, div_name)
     enameDict = {}
 
     zerolist = ["0001","0002","0003"]
