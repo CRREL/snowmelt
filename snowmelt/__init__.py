@@ -17,7 +17,7 @@ Extent = namedtuple('Extent','xmin,ymin,xmax,ymax') # Convert to a class?
 transferlist = []
 
 
-def process_extents(div_name, process_date, dataset_type, extents_list):
+def process_extents(div_name, dist_name, process_date, dataset_type, extents_list):
     ''' Main function for processing extents.  Calls lots of helper
     and utility functions. 
     div_name: string - Name of division, used in output file format.
@@ -32,7 +32,7 @@ def process_extents(div_name, process_date, dataset_type, extents_list):
 
     keydir = os.path.join(topdir, "key")
     rddir = os.path.join(topdir, "rawdata")
-    projdir = os.path.join(topdir, div_name)
+    projdir = os.path.join(topdir, div_name, dist_name)
 
     projresdir = os.path.join(projdir, "results_sn")
     projascdir = os.path.join(projresdir, "asc_files")
@@ -192,8 +192,8 @@ def process_extents(div_name, process_date, dataset_type, extents_list):
             dssdunits = varprops[3]
             WriteToDSS2(asc2dssdir,projasc,dssfile,dtype,path,dssdunits)
 
-    # TODO Maybe uncomment this?  Might be good to clean up the temp dir.
-    # shutil.rmtree(tmpdir)
+    # Clean up the temp dir.
+    shutil.rmtree(tmpdir)
 
     # Write out file to document we've run for this day.
     with open(histfile, "w") as fo:
@@ -224,8 +224,8 @@ def GetDatasetExtent(ds):
 
 
 def GetDSSBaseName(inDT):
-    #airtemp.yyyy.mm.dss
-    #account for dss using 2400 as midnight And nws data using 0000
+    # snow.<yyyy>.<mm>.dss
+    # Account for dss using 2400 as midnight And nws data using 0000
     if inDT.strftime("%H") == "00" and inDT.strftime("%d") == "01":
         return "snow." + (inDT - datetime.timedelta(hours=1)).strftime("%Y.%m.dss")
     else:
@@ -304,6 +304,7 @@ def min_box_os(ext1, ext2, cellsize):
 
     return os1,os2
 
+
 def RawFileManip(file_noext, masterhdr):
     try:
         os.remove(file_noext + ".Hdr")
@@ -315,13 +316,10 @@ def RawFileManip(file_noext, masterhdr):
         print "I/O error({0}): {1}".format(e.errno,e.strerror)
         raise
 
+
 def ReprojUseWarpBil(infile, outfile, ext):
-    to_srs = "'+proj=aea +lat_1=29.5n +lat_2=45.5n +lat_0=23.0n +lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'"
-##    "-t_srs" ,to_srs,"-r","bilinear",
-##              "-dstnodata","-9999",
-##              "-tr","2000","-2000",
-##              "-tap",
-##              "-te",str(ext.xmin),str(ext.ymin),str(ext.xmax),str(ext.ymax),
+    to_srs = ("'+proj=aea +lat_1=29.5n +lat_2=45.5n +lat_0=23.0n "
+              "+lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'")
     from_srs = '"+proj=longlat +datum=WGS84"'
 
     cmdlist = ' '.join(["gdalwarp","-s_srs",from_srs,"-t_srs",to_srs,
@@ -536,13 +534,8 @@ def WriteToDSS2(asc2dssdir, inasc, outdss, dtype, path, dunits):
         print stdout
     return
 
+
 def ZeroDStoAsc2(gProps, ascname, tmpdir):
-
-##    ds = gdal.Open(template,GA_ReadOnly)
-##    if ds is None:
-##        #raise IOError("Could not open '%s'" % (shgtif))
-##        return False
-
     xsize = gProps[2]
     ysize = gProps[3]
 
