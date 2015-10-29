@@ -23,6 +23,7 @@ sys.path.insert(0, SNOW_ROOT)
 import snowmelt
 from snowmelt import config
 
+
 # Our main script.
 def main():
     
@@ -74,7 +75,7 @@ def main():
     verbose_print(options.process_date)
 
     # Run the actual grid processing.
-    snowmelt.process_extents(division, options.process_date, 
+    snowmelt.process_extents(division, district, options.process_date, 
                              options.dataset_type, extents_list)
 
     finish = timeit.default_timer()

@@ -598,10 +598,7 @@ if __name__ == '__main__':
     transferlist = []
 
     extarrlist = [
-        ["CONNECTICUT RIVER", [1824810, 1952116, 2271001, 2729826]],
-        # feet ["CT_RIVER", [5986916, 6404582, 7450788, 8956119]],
-        # ["PLATTE_RIVER",[-1094000,1782000,-368000,2306000]],
-        # ["ABV_GAVINS",[-1418000,2108000,42000,3064000]],
+        ['Connecticut River', [1820000, 2266000, 1958000, 2734000]],
     ]
 
     todaysdate = datetime.datetime.now()

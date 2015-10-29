@@ -12,6 +12,8 @@ from collections import namedtuple
 from osgeo import gdal,osr
 from osgeo.gdalconst import *
 
+from snowmelt.utils import mkdir_p
+
 # Global vars.  TODO Bit ugly, need to rethink how to do these.
 Extent = namedtuple('Extent','xmin,ymin,xmax,ymax') # Convert to a class?
 transferlist = []
@@ -38,6 +40,12 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
     projascdir = os.path.join(projresdir, "asc_files")
     projdssdir = os.path.join(projresdir, "dss_files")
     histdir = os.path.join(projresdir, "history")
+
+    # Build our results directories if needed.
+    mkdir_p(projascdir)
+    mkdir_p(projdssdir)
+    mkdir_p(histdir)
+
     asc2dssdir = os.path.join(topdir, "Asc2DssGridUtility")
 
     masterhdr = os.path.join(keydir, dataset_type + "_master.hdr")
@@ -386,8 +394,6 @@ def RasterMath(shgtif, shgtifmath, varcode, nameDict):
         return False
 
     in_geot = ds.GetGeoTransform()
-##    in_prj = osr.SpatialReference()
-##    in_prj.ImportFromWkt(ds.GetProjection())
 
     xsize = ds.RasterXSize
     ysize = ds.RasterYSize
@@ -403,21 +409,14 @@ def RasterMath(shgtif, shgtifmath, varcode, nameDict):
         #sweds = gdal.Open(swetif,GA_ReadOnly)
         sweds = gdal.Open(sweasc,GA_ReadOnly)
         if sweds is None:
-            #raise IOError("Could not open '%s'" % (swetif))
             return False
         #swe ds will have same boundaries and cell size as cold content
 
         swearr = sweds.GetRasterBand(1).ReadAsArray(0,0,xsize,ysize).astype(np.dtype("float32"))
         ccarr = np.where(arr == nodata,nodata,arr - 273.15)
-        #print swearr[0,729]
-        #print arr[0,729]
-        #print ccarr[0,729]
-        #print swearr[0,729] * 2114 * ccarr[0,729] / 333000
-        #print ",".join(map(str,[swearr.dtype,arr.dtype,ccarr.dtype]))
         newarr = np.where(ccarr >= 0,0,
                           np.where((swearr == nodata) | (ccarr == nodata),
                                     nodata,swearr * 2114 * ccarr / 333000))
-        #print newarr[0,729]
     elif varcode == "1044":
         #Snow Melt
         newarr = np.where(arr == nodata,nodata,arr / 100.0)
