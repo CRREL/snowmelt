@@ -10,5 +10,6 @@ export LD_LIBRARY_PATH=/usr/lib64:/usr/lib:/usr/local/lib:/usr/lib/oracle/11.2/c
 # Copy over to cwms2 box, using home folder for now.
 # scp /fire/study/snow/nohrsc_gdal/nad/results_sn/dss_files/* cwmsgrids@cpc-cwms2.usace.army.mil:/export/home/u4rrcsgb/nae/
 
-# Ultimate destination below.
+# Ultimate destination(s) below.
 scp /fire/study/snow/nohrsc_gdal/nad/results_sn/dss_files/* cwmsgrids@cpc-cwms2.usace.army.mil:/netapp/cwmsgrids/data/watershed/nad/nae/
+scp /fire/study/snow/nohrsc_gdal/mvd/mvp/results_sn/dss_files/* cwmsgrids@cpc-cwms2.usace.army.mil:/netapp/cwmsgrids/data/watershed/mvd/mvp/

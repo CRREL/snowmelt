@@ -1,17 +1,10 @@
 # Original imports, will try to cull these a bit.
 import os
 import sys
+import re
 import datetime
-import gzip
-import numpy as np
-import shutil
-import subprocess
-import tarfile
 import timeit
 from collections import namedtuple
-
-from osgeo import gdal,osr
-from osgeo.gdalconst import *
 
 # Imports from refactoring.
 from optparse import OptionParser
@@ -23,13 +16,17 @@ sys.path.insert(0, SNOW_ROOT)
 import snowmelt
 from snowmelt import config
 
+DATE_REGEX = re.compile(r'^(?P<start_date>\d{8})-(?P<end_date>\d{8})$')
 
-# Our main script.
+
 def main():
-    
+
     def verbose_print(to_print):
         if options.verbose:
             print to_print
+
+    def parse_date(date_string):
+        return datetime.datetime.strptime(date_string,'%Y%m%d')
 
     # Track our script run time.
     start = timeit.default_timer()
@@ -43,10 +40,13 @@ def main():
         default=False)
     parser.add_option('-d', '--date', dest='process_date', 
         default=datetime.datetime.now().strftime('%Y%m%d'), 
-        help='Date should be in YYYYMMDD format.')
+        help='Date should be in YYYYMMDD format. Can also provide a range '
+             'of dates with YYYYMMDD-YYYYMMDD format.')
     parser.add_option('-t', '--dataset', dest='dataset_type', default='zz')
     parser.add_option('-a', '--all', dest='all_extents', action='store_true',
-        default=False)
+        default=False, help='Parse all exents - not implemented yet.')
+    parser.add_option('--dry-run', dest='dry_run', action='store_true', 
+        default=False, help='Dry run of the script.')
 
     options, args = parser.parse_args()
 
@@ -65,18 +65,40 @@ def main():
         sys.exit(1)
     verbose_print('Extents list:\n' + '\n'.join([str(ext) for ext in extents_list]))
 
-    # Parse out our processing date.
+    # Parse out our processing date(s).
+    process_dates = []
     try:
-        options.process_date = datetime.datetime.strptime(options.process_date,'%Y%m%d')
+        match = DATE_REGEX.match(options.process_date)
+        if match is not None:
+            # Build out a list of dates to process.
+            match_dict = match.groupdict()
+            process_date = parse_date(match_dict['start_date'])
+            end_date = parse_date(match_dict['end_date'])
+            assert process_date < end_date
+            while process_date <= end_date:
+                process_dates += [process_date]
+                process_date += datetime.timedelta(days=1)
+        else:
+            process_dates = [parse_date(options.process_date)]
     except:
-        print 'Couldn\'t parse time input.  Please use YYYYMMDD format.'
+        if options.verbose:
+            raise
+        print ('Couldn\'t parse time input.  Please use YYYYMMDD format, or '
+               'YYYYMMDD-YYYYMMDD for a date range.')
         sys.exit(1)
 
     verbose_print(options.process_date)
 
     # Run the actual grid processing.
-    snowmelt.process_extents(division, district, options.process_date, 
-                             options.dataset_type, extents_list)
+    for process_date in process_dates:
+        verbose_print(
+            'Processing extents for location {0} - {1}, date {2}'.format(
+                division, district, process_date
+            )
+        )
+        if not options.dry_run:
+            snowmelt.process_extents(division, district, process_date, 
+                                     options.dataset_type, extents_list)
 
     finish = timeit.default_timer()
     print 'Finished {0} {1}  (Duration = {2})'.format(
