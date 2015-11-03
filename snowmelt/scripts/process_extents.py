@@ -97,8 +97,11 @@ def main():
             )
         )
         if not options.dry_run:
-            snowmelt.process_extents(division, district, process_date, 
-                                     options.dataset_type, extents_list)
+            snowmelt.process_extents(
+                division, district, 
+                process_date + datetime.timedelta(hours=2), # Run it for 2am.
+                options.dataset_type, extents_list
+            )
 
     finish = timeit.default_timer()
     print 'Finished {0} {1}  (Duration = {2})'.format(
