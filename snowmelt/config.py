@@ -3,9 +3,10 @@
 EXTENTS = {
     'nad': {
         'nae': [
-            # Old extents, commenting out.
-            # ['Connecticut River', [1824810, 1952116, 2271001, 2729826]],
             ['Connecticut River', [1820000, 2266000, 1958000, 2734000]],
+        ],
+        'nab': [
+            ['Upper Susquehanna River', [1558000, 2140000, 1740000, 2410000]],
         ],
     },
     'mvd': {

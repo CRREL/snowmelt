@@ -88,6 +88,8 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
 
     if not FileStatus:
         print "All source data not available."
+        # Clean up the temp dir.
+        shutil.rmtree(tmpdir)
         return
 
     # Loop through our source SNOWDAS files.
@@ -179,6 +181,8 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
 
     if len(extentGProps) == 0:
         print "An error occurred identifying extent properties."
+        # Clean up the temp dir.
+        shutil.rmtree(tmpdir)
         return
     
     for varcode in zerolist:
