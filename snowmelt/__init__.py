@@ -9,17 +9,18 @@ import subprocess
 import tarfile
 from collections import namedtuple
 
-from osgeo import gdal,osr
+from osgeo import gdal, osr
 from osgeo.gdalconst import *
 
 from snowmelt.utils import mkdir_p
+from snowmelt import config
 
 # Global vars.  TODO Bit ugly, need to rethink how to do these.
 Extent = namedtuple('Extent','xmin,ymin,xmax,ymax') # Convert to a class?
 transferlist = []
 
 
-def process_extents(div_name, dist_name, process_date, dataset_type, extents_list):
+def process_extents(div_name, dist_name, process_date, extents_list, options):
     ''' Main function for processing extents.  Calls lots of helper
     and utility functions. 
     div_name: string - Name of division, used in output file format.
@@ -27,13 +28,31 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
     dataset_type: string - type of dataset, usually "zz".
     extents_list: list - list of namedtuples for each watershed.
     '''
+    
+    def verbose_print(to_print):
+        if options.verbose:
+            print to_print
 
-    # TODO move these directory settings to config.py
-    topdir = "/fire/study/snow/nohrsc_gdal"
-    srcrddir = "/fire/study/snow/rawdata"
+    topdir = config.TOP_DIR
+    
+    if process_date.year > 2012:
+        srcrddir = config.SRC_DIR
+    elif process_date.year == 2012:
+        srcrddir = config.ARCHIVE_DIR_2012
+    else:
+        month_path = process_date.strftime('%Y/%B')
+        srcrddir = os.path.join(config.ARCHIVE_DIR, month_path)
+    
+    verbose_print('Source directory: {0}'.format(srcrddir))
+
+    # Use 'us' prefix for dates before January 24, 2011.
+    if process_date < datetime.datetime(2011, 1, 24, 0, 0):
+        dataset_type = 'us'
+    else:
+        dataset_type = 'zz'
 
     keydir = os.path.join(topdir, "key")
-    rddir = os.path.join(topdir, "rawdata")
+    # rddir = os.path.join(topdir, "rawdata")
     projdir = os.path.join(topdir, div_name, dist_name)
 
     projresdir = os.path.join(projdir, "results_sn")
@@ -64,10 +83,11 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
 
     PropDict = SetProps(process_date, div_name)
     enameDict = {}
-
     zerolist = ["0001","0002","0003"]
-
     extentGProps = {}
+    maxExtent = getMaxExtent(extents_list)
+    dssbasename = GetDSSBaseName(process_date)
+    dssfile = os.path.join(projdssdir,dssbasename)
 
     snodaslist = [
         dataset_type + "_ssmv11034tS__T0001TTNATS" + ymdDate + "05HP001",
@@ -75,15 +95,9 @@ def process_extents(div_name, dist_name, process_date, dataset_type, extents_lis
         dataset_type + "_ssmv11038wS__A0024TTNATS" + ymdDate + "05DP001",
         dataset_type + "_ssmv11044bS__T0024TTNATS" + ymdDate + "05DP000",
     ]
-
-    maxExtent = getMaxExtent(extents_list)
-
-    dssbasename = GetDSSBaseName(process_date)
-    dssfile = os.path.join(projdssdir,dssbasename)
-
     FileStatus = True
     for f in snodaslist:
-        if not os.path.isfile(os.path.join(srcrddir,f + ".grz")):
+        if not os.path.isfile(os.path.join(srcrddir, f + ".grz")):
             FileStatus = False
 
     if not FileStatus:
@@ -453,25 +467,25 @@ def SetProps(inDate, basin):
     bup = basin.upper()
     inDict = {}
 
-    #SWE
+    # SWE
     inDict["1034"] = [["SHG",bup,"SWE",DSSdate,"","SNODAS"],
                       "INST-VAL",False]
-    #Snow Depth
+    # Snow Depth
     inDict["1036"] = [["SHG",bup,"SNOW DEPTH",DSSdate,"","SNODAS"],
                       "INST-VAL",False]
-    #Cold Content
+    # Cold Content
     inDict["1038"] = [["SHG",bup,"COLD CONTENT",DSSdate,"","SNODAS"],
                       "INST-VAL",True]
-    #Snow Melt
+    # Snow Melt
     inDict["1044"] = [["SHG",bup,"SNOW MELT",DSSdateYest,DSSdate,
                       "SNODAS"], "PER-CUM",True]
-    #Liquid Water (Zero)
+    # Liquid Water (Zero)
     inDict["0001"] = [["SHG",bup,"LIQUID WATER",DSSdate,"","ZERO"],
                       "INST-VAL",False,"MM"]
-    #Cold Content ATI (Zero)
+    # Cold Content ATI (Zero)
     inDict["0002"] = [["SHG",bup,"COLD CONTENT ATI",DSSdate,"","ZERO"],
                       "INST-VAL",False,"DEG C"]
-    #Melt Rate ATI (Zero)
+    # Melt Rate ATI (Zero)
     inDict["0003"] = [["SHG",bup,"MELTRATE ATI",DSSdate,"","ZERO"],
                       "INST-VAL",False,"DEGC-D"]
     return inDict

@@ -42,7 +42,6 @@ def main():
         default=datetime.datetime.now().strftime('%Y%m%d'), 
         help='Date should be in YYYYMMDD format. Can also provide a range '
              'of dates with YYYYMMDD-YYYYMMDD format.')
-    parser.add_option('-t', '--dataset', dest='dataset_type', default='zz')
     parser.add_option('-a', '--all', dest='all_extents', action='store_true',
         default=False, help='Parse all exents - not implemented yet.')
     parser.add_option('--dry-run', dest='dry_run', action='store_true', 
@@ -98,9 +97,10 @@ def main():
         )
         if not options.dry_run:
             snowmelt.process_extents(
-                division, district, 
+                division, district,
                 process_date + datetime.timedelta(hours=2), # Run it for 2am.
-                options.dataset_type, extents_list
+                extents_list,
+                options,
             )
 
     finish = timeit.default_timer()
