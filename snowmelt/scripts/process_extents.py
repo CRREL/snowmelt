@@ -104,7 +104,7 @@ def main():
 
     # Run the actual grid processing for each set of inputs and dates.
     for input_list in inputs_list:
-        district, division, extents_list = input_list
+        division, district, extents_list = input_list
         for process_date in process_dates:
             verbose_print(
                 'Processing extents for location {0} - {1}, date {2}'.format(
