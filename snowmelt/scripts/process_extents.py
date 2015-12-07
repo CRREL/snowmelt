@@ -22,7 +22,7 @@ DATE_REGEX = re.compile(r'^(?P<start_date>\d{8})-(?P<end_date>\d{8})$')
 def main():
 
     def verbose_print(to_print):
-        if options.verbose:
+        if options.verbose or options.dry_run:
             print to_print
 
     def parse_date(date_string):
@@ -43,26 +43,39 @@ def main():
         help='Date should be in YYYYMMDD format. Can also provide a range '
              'of dates with YYYYMMDD-YYYYMMDD format.')
     parser.add_option('-a', '--all', dest='all_extents', action='store_true',
-        default=False, help='Parse all exents - not implemented yet.')
+        default=False, help='Parse all exents defined in config.py')
     parser.add_option('--dry-run', dest='dry_run', action='store_true', 
         default=False, help='Dry run of the script.')
 
     options, args = parser.parse_args()
 
+    # Check that arguments make sense.
     if (not options.all_extents) and len(args) != 2:
-        print "Error: Script requires two arguments\n"
+        print 'Error: Script requires two arguments.\n'
+        parser.print_help()
+        sys.exit(1)
+    elif options.all_extents and len(args) != 0:
+        print 'Error: No arguments required when using the --all option.\n'
         parser.print_help()
         sys.exit(1)
 
-    # Grab extents based on division and district inputs.
-    division, district = args
-    try:
-        extents_list = config.EXTENTS[division][district]
-    except KeyError:
-        print ('Could not find extents list for '
-               'Division "{0}", District "{1}"').format(division, district)
-        sys.exit(1)
-    verbose_print('Extents list:\n' + '\n'.join([str(ext) for ext in extents_list]))
+    # Grab parameters based on division and district inputs.
+    inputs_list = []
+    if options.all_extents:
+        for division in config.EXTENTS:
+            for district in config.EXTENTS[division]:
+                inputs_list += [
+                    (division, district, config.EXTENTS[division][district])
+                ]
+    else:
+        division, district = args
+        try:
+            extents_list = config.EXTENTS[division][district]
+            inputs_list = [(division, district, extents_list)]
+        except KeyError:
+            print ('Could not find extents list for '
+                   'Division "{0}", District "{1}"').format(division, district)
+            sys.exit(1)
 
     # Parse out our processing date(s).
     process_dates = []
@@ -86,22 +99,25 @@ def main():
                'YYYYMMDD-YYYYMMDD for a date range.')
         sys.exit(1)
 
-    verbose_print(options.process_date)
+    verbose_print('Process date(s): {0}'.format(options.process_date))
+    verbose_print('Inputs list:\n' + '\n'.join([str(inputs) for inputs in inputs_list]))
 
-    # Run the actual grid processing.
-    for process_date in process_dates:
-        verbose_print(
-            'Processing extents for location {0} - {1}, date {2}'.format(
-                division, district, process_date
+    # Run the actual grid processing for each set of inputs and dates.
+    for input_list in inputs_list:
+        district, division, extents_list = input_list
+        for process_date in process_dates:
+            verbose_print(
+                'Processing extents for location {0} - {1}, date {2}'.format(
+                    division, district, process_date
+                )
             )
-        )
-        if not options.dry_run:
-            snowmelt.process_extents(
-                division, district,
-                process_date + datetime.timedelta(hours=2), # Run it for 2am.
-                extents_list,
-                options,
-            )
+            if not options.dry_run:
+                snowmelt.process_extents(
+                    division, district,
+                    process_date + datetime.timedelta(hours=2), # 2am.
+                    extents_list,
+                    options,
+                )
 
     finish = timeit.default_timer()
     print 'Finished {0} {1}  (Duration = {2})'.format(

@@ -12,6 +12,12 @@ EXTENTS = {
     'mvd': {
         'mvp': [
             ['Red River', [-234000, 2494000, 68000, 2896000]],
+            # New parameters requested:
+            # SubGridOrigin: -185,1235
+            # SubGridExtents: 270,250
+        ],
+        'mvs': [
+            ['Kaskaskia River', [498000, 1672000, 670000, 1938000]],
         ],
     },
     'nwd': {
@@ -19,6 +25,11 @@ EXTENTS = {
             ['South Platte River', [-878000, 1784000, -384000, 2086000]],
         ],
     },
+    'lrd': {
+        'lrl': [
+            ['Salt River', [866000, 1646000, 980000, 1766000]],
+        ]
+    }
 }
 
 TOP_DIR = '/fire/study/snow/nohrsc_gdal'
