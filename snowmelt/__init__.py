@@ -332,15 +332,13 @@ def min_box_os(ext1, ext2, cellsize):
 
 
 def RawFileManip(file_noext, masterhdr):
-    try:
-        os.remove(file_noext + ".Hdr")
-        shutil.copy(masterhdr,file_noext + ".hdr")
-        if os.path.exists(file_noext + ".bil"):
-            os.remove(file_noext + ".bil")
-        os.rename(file_noext + ".dat",file_noext + ".bil")
-    except IOError as e:
-        print "I/O error({0}): {1}".format(e.errno,e.strerror)
-        raise
+    ''' Replaces header with custom header file and renames .dat to .bil '''
+    os.remove(file_noext + ".Hdr")
+    shutil.copy(masterhdr,file_noext + ".hdr")
+    if os.path.exists(file_noext + ".bil"):
+        os.remove(file_noext + ".bil")
+    os.rename(file_noext + ".dat",file_noext + ".bil")
+    
 
 
 def ReprojUseWarpBil(infile, outfile, ext):
@@ -492,20 +490,33 @@ def SetProps(inDate, basin):
 
 
 def UnzipLinux(origfile_noext, file_noext):
-    if not os.path.exists(origfile_noext + ".grz"):
-        print "File does not exist: " + file_noext + ".grz"
+    ''' Extract our tarball of data. '''
+    if not os.path.exists(origfile_noext + '.grz'):
+        print 'File does not exist: ' + file_noext + '.grz'
         sys.exit()
 
     bname = os.path.basename(file_noext)
     pname = os.path.dirname(file_noext)
 
-    if os.path.exists(file_noext + ".Hdr"):
-        os.remove(file_noext + ".Hdr")
-    if os.path.exists(file_noext + ".dat"):
-        os.remove(file_noext + ".dat")
+    OUTPUT_EXTS = ('.Hdr', '.dat')
+    for output_ext in OUTPUT_EXTS:
+        if os.path.exists(file_noext + output_ext):
+            os.remove(file_noext + output_ext)
 
-    tar = tarfile.open(origfile_noext + ".grz",'r')
+    tar = tarfile.open(origfile_noext + '.grz','r')
     tar.extractall(pname)
+
+    # Do one more layer of extraction if needed.
+    for output_ext in OUTPUT_EXTS:
+        gz_filename = file_noext + output_ext + '.gz'
+        if os.path.isfile(file_noext + output_ext + '.gz'):
+            # os.chdir(pname)
+            cmdlist = ['gunzip', gz_filename]
+            proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            exit_code = proc.wait()
+    
 
 
 def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
@@ -513,15 +524,16 @@ def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
     bname = os.path.basename(inasc)
     os.chdir(pname)
     asc2dsscmd = os.path.join(asc2dssdir,"asc2dssGriddash")
-    cmdlist = ["python",asc2dsscmd,"gridtype=SHG","dunits=MM", \
-               "dtype=" + dtype,"in=" + bname,"dss=" + outdss, \
-               "path=" + path]
+    cmdlist = [
+        "python", asc2dsscmd, "gridtype=SHG","dunits=MM",
+        "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
+        "path=" + path
+    ]
     print pname
     print cmdlist
-    proc = subprocess.Popen(cmdlist,stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    stdout,stderr=proc.communicate()
-    exit_code=proc.wait()
+    proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    exit_code = proc.wait()
 
     if exit_code:
         raise RuntimeError(stderr)
