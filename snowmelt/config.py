@@ -11,10 +11,8 @@ EXTENTS = {
     },
     'mvd': {
         'mvp': [
-            ['Red River', [-234000, 2494000, 68000, 2896000]],
-            # New parameters requested:
-            # SubGridOrigin: -185,1235
-            # SubGridExtents: 270,250
+            ['Red River', [-351108, 2498740, 450812, 2944780]],
+            # ['Red River', [-234000, 2494000, 68000, 2896000]], old extents
         ],
         'mvs': [
             ['Kaskaskia River', [498000, 1672000, 670000, 1938000]],

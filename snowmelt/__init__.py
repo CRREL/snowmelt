@@ -106,7 +106,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         shutil.rmtree(tmpdir)
         return
 
-    # Loop through our source SNOWDAS files.
+    # Loop through our source SNODAS files.
     for f in snodaslist:
         origf_noext = os.path.join(srcrddir, f)
         f_noext = os.path.join(tmpdir, f)
@@ -516,7 +516,6 @@ def UnzipLinux(origfile_noext, file_noext):
                                     stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
             exit_code = proc.wait()
-    
 
 
 def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
