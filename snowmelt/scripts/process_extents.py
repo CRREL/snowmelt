@@ -100,11 +100,15 @@ def main():
         sys.exit(1)
 
     verbose_print('Process date(s): {0}'.format(options.process_date))
-    verbose_print('Inputs list:\n' + '\n'.join([str(inputs) for inputs in inputs_list]))
 
     # Run the actual grid processing for each set of inputs and dates.
     for input_list in inputs_list:
         division, district, extents_list = input_list
+        verbose_print('-' * 64)
+        verbose_print('{0} {1} Watersheds:'.format(division.upper(), 
+                                                     district.upper()))
+        for extent in extents_list:
+            verbose_print('{0}: {1}'.format(extent[0], extent[1]))
         for process_date in process_dates:
             verbose_print(
                 'Processing extents for location {0} - {1}, date {2}'.format(
