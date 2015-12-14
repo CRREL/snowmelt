@@ -8,7 +8,6 @@
 # Fields are comma-separated, and contain values for division ID, district ID, and
 # basin name, followed by the coordinates of the corners of the buffered extents in
 # this order: minimum X, ,minimum Y, maximum X, and maximum Y.
-
 "SPD", "SPK", "Upper Colorado River", -1430000, 1452000, -806000, 2362000
 "SPD", "SPK", "Weber River", -1352000, 2050000, -1236000, 2164000
 "SPD", "SPK", "Provo River", -1326000, 2016000, -1238000, 2074000
