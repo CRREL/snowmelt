@@ -17,7 +17,6 @@ from snowmelt import config
 
 # Global vars.  TODO Bit ugly, need to rethink how to do these.
 Extent = namedtuple('Extent','xmin,ymin,xmax,ymax') # Convert to a class?
-transferlist = []
 
 
 def process_extents(div_name, dist_name, process_date, extents_list, options):
@@ -27,6 +26,9 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     process_date: datetime.datetime object - date for which data is desired.
     dataset_type: string - type of dataset, usually "zz".
     extents_list: list - list of namedtuples for each watershed.
+
+    Returns the path to the file if new data was written to a DSS file, 
+    None otherwise.
     '''
     
     def verbose_print(to_print):
@@ -76,7 +78,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     histfile = os.path.join(histdir,"proccomplete" + ymdDate + ".txt")
     if os.path.isfile(histfile):
         print "Grids processed earlier today."
-        return
+        return None
 
     tmpdir = os.path.join(projresdir,"tmp" + dstr)
     os.mkdir(tmpdir)
@@ -87,7 +89,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     extentGProps = {}
     maxExtent = getMaxExtent(extents_list)
     dssbasename = GetDSSBaseName(process_date)
-    dssfile = os.path.join(projdssdir,dssbasename)
+    dssfile = os.path.join(projdssdir, dssbasename)
 
     snodaslist = [
         dataset_type + "_ssmv11034tS__T0001TTNATS" + ymdDate + "05HP001",
@@ -104,7 +106,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         print "All source data not available."
         # Clean up the temp dir.
         shutil.rmtree(tmpdir)
-        return
+        return None
 
     # Loop through our source SNODAS files.
     for f in snodaslist:
@@ -138,9 +140,8 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
             for extentarr in extents_list:
                 ds = gdal.Open(shgtifmath)
                 if ds is None:
-                    #Write to log
                     print 'Could not open ' + fname
-                    return 1
+                    return None
                 nodata = ds.GetRasterBand(1).GetNoDataValue()
                 fullext = GetDatasetExtent(ds)
                 cellsize = ds.GetGeoTransform()[1]
@@ -187,9 +188,6 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
                 path = "/SHG/" + extentarr[0].upper() + "/" + p[2] + \
                     "/" + p[3] +"/" + p[4] + "/" + p[5] + "/"
                 WriteToDSS(asc2dssdir,projasc,dssfile,dtype,path)
-                if not dssbasename in transferlist:
-                    transferlist.append(dssbasename)
-                    print"translist = " + ",".join(transferlist)
                 outarr = None
                 cliparr = None
 
@@ -197,7 +195,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         print "An error occurred identifying extent properties."
         # Clean up the temp dir.
         shutil.rmtree(tmpdir)
-        return
+        return None
     
     for varcode in zerolist:
         varprops = PropDict[varcode]
@@ -221,12 +219,12 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     # Clean up the temp dir.
     shutil.rmtree(tmpdir)
 
-    # Write out file to document we've run for this day.
+    # Write out file to track that we've run for this day.
     with open(histfile, "w") as fo:
         dstr = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         fo.write(process_date.strftime("%a %b %d %H:%M:%S %Y" ))
         fo.close
-    return
+    return dssfile
 
 
 # Helper functions below.  Here be dragons.
@@ -354,17 +352,15 @@ def ReprojUseWarpBil(infile, outfile, ext):
                         str(ext.xmax),str(ext.ymax),
                         infile,outfile])
     print cmdlist
-    proc = subprocess.Popen(cmdlist,shell=True,
+    proc = subprocess.Popen(cmdlist, shell=True,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
-    stdout,stderr=proc.communicate()
-    exit_code=proc.wait()
+    stdout, stderr = proc.communicate()
+    exit_code = proc.wait()
 
+    print stdout
     if exit_code:
-        print stdout
         raise RuntimeError(stderr)
-    else:
-        print stdout
 
 
 def RewriteASCII(inasc, outasc):

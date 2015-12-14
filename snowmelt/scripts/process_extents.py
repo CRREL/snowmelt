@@ -4,6 +4,7 @@ import sys
 import re
 import datetime
 import timeit
+import subprocess
 from collections import namedtuple
 
 # Imports from refactoring.
@@ -46,6 +47,9 @@ def main():
         default=False, help='Parse all exents defined in config.py')
     parser.add_option('--dry-run', dest='dry_run', action='store_true', 
         default=False, help='Dry run of the script.')
+    parser.add_option('--scp', dest='run_scp', action='store_true', 
+        default=False, help='Copy files to target location specfied in config '
+                            'file upon completion of processing.')
 
     options, args = parser.parse_args()
 
@@ -102,6 +106,7 @@ def main():
     verbose_print('Process date(s): {0}'.format(options.process_date))
 
     # Run the actual grid processing for each set of inputs and dates.
+    transfer_list = set()
     for input_list in inputs_list:
         division, district, extents_list = input_list
         verbose_print('-' * 64)
@@ -116,19 +121,39 @@ def main():
                 )
             )
             if not options.dry_run:
-                snowmelt.process_extents(
+                new_data = snowmelt.process_extents(
                     division, district,
                     process_date + datetime.timedelta(hours=2), # 2am.
                     extents_list,
                     options,
                 )
+                if new_data is not None:
+                    transfer_list.add((division, district, new_data))
+            else:
+                transfer_list.add(division)
 
     finish = timeit.default_timer()
-    print 'Finished {0} {1}  (Duration = {2})'.format(
+    print 'Finished Processing {0} {1}  (Duration = {2})'.format(
         os.path.basename(__file__),
         datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         str(datetime.timedelta(seconds=finish - start))
     )
+
+    # Transfer any files we've updated during this run.
+    if options.run_scp:
+        if not transfer_list:
+            print 'No new files to transfer.'
+        for (division, district, new_data) in transfer_list:
+            target_dir = config.SCP_TARGET_STR.format(division, district)
+            command = 'scp {0} {1}'.format(new_data, target_dir)
+            proc = subprocess.Popen(cmdlist, shell=True,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            exit_code = proc.wait()
+            print stdout
+            if exit_code:
+                print 'ERROR - could not transfer: {0}'.format(new_data)
 
 
 if __name__ == '__main__':
