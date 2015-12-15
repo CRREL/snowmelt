@@ -146,7 +146,8 @@ def main():
         for (division, district, new_data) in transfer_list:
             target_dir = config.SCP_TARGET_STR.format(division, district)
             command = 'scp {0} {1}'.format(new_data, target_dir)
-            proc = subprocess.Popen(cmdlist, shell=True,
+            print 'Transferring:', command
+            proc = subprocess.Popen(command, shell=True,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
