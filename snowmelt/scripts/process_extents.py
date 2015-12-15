@@ -143,10 +143,13 @@ def main():
     if options.run_scp:
         if not transfer_list:
             print 'No new files to transfer.'
+        else:
+            print '-' * 64
+            print 'Transferring updated files:'
         for (division, district, new_data) in transfer_list:
             target_dir = config.SCP_TARGET_STR.format(division, district)
             command = 'scp {0} {1}'.format(new_data, target_dir)
-            print 'Transferring:', command
+            print command
             proc = subprocess.Popen(command, shell=True,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
