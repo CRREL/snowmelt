@@ -45,6 +45,8 @@ def main():
              'of dates with YYYYMMDD-YYYYMMDD format.')
     parser.add_option('-a', '--all', dest='all_extents', action='store_true',
         default=False, help='Parse all exents defined in config.py')
+    parser.add_option('--division', dest='division',
+        default=None, help='Parse all exents defined in config.py')
     parser.add_option('--dry-run', dest='dry_run', action='store_true', 
         default=False, help='Dry run of the script.')
     parser.add_option('--scp', dest='run_scp', action='store_true', 
@@ -54,12 +56,16 @@ def main():
     options, args = parser.parse_args()
 
     # Check that arguments make sense.
-    if (not options.all_extents) and len(args) != 2:
-        print 'Error: Script requires two arguments.\n'
+    if options.all_extents and len(args) != 0:
+        print 'Error: No arguments required when using the --all option.\n'
         parser.print_help()
         sys.exit(1)
-    elif options.all_extents and len(args) != 0:
-        print 'Error: No arguments required when using the --all option.\n'
+    elif options.division and len(args) != 0:
+        print 'Error: No arguments required when using the --division option.\n'
+        parser.print_help()
+        sys.exit(1)
+    elif not (options.all_extents or options.division) and len(args) != 2:
+        print 'Error: Script requires two arguments.\n'
         parser.print_help()
         sys.exit(1)
 
@@ -71,6 +77,17 @@ def main():
                 inputs_list += [
                     (division, district, config.EXTENTS[division][district])
                 ]
+    elif options.division:
+        division = options.division
+        try:
+            for district in config.EXTENTS[division]:
+                inputs_list += [
+                    (division, district, config.EXTENTS[division][district])
+                ]
+        except KeyError:
+            print ('Could not find extents list for '
+                   'Division "{0}"').format(division)
+            sys.exit(1)
     else:
         division, district = args
         try:
