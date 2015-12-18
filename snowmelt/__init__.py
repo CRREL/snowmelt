@@ -81,6 +81,9 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
             div_name, dist_name, process_date.strftime("%Y.%m.%d")
         )
         return None
+    print "Processing {0} {1} grids for: {3}".format(
+        div_name, dist_name, process_date.strftime("%Y.%m.%d")
+    )
 
     tmpdir = os.path.join(projresdir, "tmp" + dstr)
     os.mkdir(tmpdir)
@@ -354,16 +357,19 @@ def ReprojUseWarpBil(infile, outfile, ext):
                         "-te", str(ext.xmin), str(ext.ymin),
                         str(ext.xmax), str(ext.ymax),
                         infile, outfile])
-    print cmdlist
+    if not config.SUBPROCESS_QUIET:
+        print cmdlist
     proc = subprocess.Popen(cmdlist, shell=True,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     exit_code = proc.wait()
 
-    print stdout
+    if not config.SUBPROCESS_QUIET:
+        print stdout
     if exit_code:
         raise RuntimeError(stderr)
+    return
 
 
 def RewriteASCII(inasc, outasc):
@@ -531,17 +537,18 @@ def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
         "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
         "path=" + path
     ]
-    print pname
-    print cmdlist
+    if not config.SUBPROCESS_QUIET:
+        print pname
+        print cmdlist
     proc = subprocess.Popen(
         cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     exit_code = proc.wait()
 
+    if not config.SUBPROCESS_QUIET:
+        print stdout
     if exit_code:
         raise RuntimeError(stderr)
-    else:
-        print stdout
     return
 
 
@@ -553,17 +560,18 @@ def WriteToDSS2(asc2dssdir, inasc, outdss, dtype, path, dunits):
     cmdlist = ["python", asc2dsscmd, "gridtype=SHG", "dunits=" + dunits,
                "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
                "path=" + path]
-    print pname
-    print cmdlist
+    if not config.SUBPROCESS_QUIET:
+        print pname
+        print cmdlist
     proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     exit_code = proc.wait()
 
+    if not config.SUBPROCESS_QUIET:
+        print stdout
     if exit_code:
         raise RuntimeError(stderr)
-    else:
-        print stdout
     return
 
 
