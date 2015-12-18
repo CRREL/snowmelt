@@ -77,11 +77,11 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     # Break out if processing for the given date has already happened.
     histfile = os.path.join(histdir, "proccomplete" + ymdDate + ".txt")
     if os.path.isfile(histfile):
-        print "{0} {1} grids already processed for: {3}".format(
+        print "{0} {1} grids already processed for: {2}".format(
             div_name, dist_name, process_date.strftime("%Y.%m.%d")
         )
         return None
-    print "Processing {0} {1} grids for: {3}".format(
+    print "Processing {0} {1} grids for: {2}".format(
         div_name, dist_name, process_date.strftime("%Y.%m.%d")
     )
 
