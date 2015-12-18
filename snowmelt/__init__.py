@@ -16,7 +16,7 @@ from snowmelt.utils import mkdir_p
 from snowmelt import config
 
 # Global vars.  TODO Bit ugly, need to rethink how to do these.
-Extent = namedtuple('Extent','xmin,ymin,xmax,ymax') # Convert to a class?
+Extent = namedtuple('Extent', 'xmin,ymin,xmax,ymax')  # Convert to a class?
 
 
 def process_extents(div_name, dist_name, process_date, extents_list, options):
@@ -30,13 +30,13 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     Returns the path to the file if new data was written to a DSS file, 
     None otherwise.
     '''
-    
+
     def verbose_print(to_print):
         if options.verbose:
             print to_print
 
     topdir = config.TOP_DIR
-    
+
     if process_date.year > 2012:
         srcrddir = config.SRC_DIR
     elif process_date.year == 2012:
@@ -44,7 +44,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     else:
         month_path = process_date.strftime('%Y/%B')
         srcrddir = os.path.join(config.ARCHIVE_DIR, month_path)
-    
+
     verbose_print('Source directory: {0}'.format(srcrddir))
 
     # Use 'us' prefix for dates before January 24, 2011.
@@ -75,17 +75,17 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     ymdDate = process_date.strftime("%Y%m%d")
 
     # Break out if processing for the given date has already happened.
-    histfile = os.path.join(histdir,"proccomplete" + ymdDate + ".txt")
+    histfile = os.path.join(histdir, "proccomplete" + ymdDate + ".txt")
     if os.path.isfile(histfile):
         print "Grids processed earlier today."
         return None
 
-    tmpdir = os.path.join(projresdir,"tmp" + dstr)
+    tmpdir = os.path.join(projresdir, "tmp" + dstr)
     os.mkdir(tmpdir)
 
     PropDict = SetProps(process_date, div_name)
     enameDict = {}
-    zerolist = ["0001","0002","0003"]
+    zerolist = ["0001", "0002", "0003"]
     extentGProps = {}
     maxExtent = getMaxExtent(extents_list)
     dssbasename = GetDSSBaseName(process_date)
@@ -119,19 +119,19 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         dtype = varprops[1]
 
         easiername = \
-            div_name + "_" + varprops[0][2].replace(" ","_").lower() + ymdDate
+            div_name + "_" + varprops[0][2].replace(" ", "_").lower() + ymdDate
         enameDict[varcode] = os.path.join(projascdir, easiername + ".asc")
-        shgtif = os.path.join(tmpdir,f + "alb.tif")
+        shgtif = os.path.join(tmpdir, f + "alb.tif")
         shgtifmath = os.path.join(tmpdir, easiername + ".tif")
 
-        UnzipLinux(origf_noext,f_noext)
-        RawFileManip(f_noext,masterhdr)
+        UnzipLinux(origf_noext, f_noext)
+        RawFileManip(f_noext, masterhdr)
 
-        ReprojUseWarpBil(f_noext + ".bil",shgtif,maxExtent)
+        ReprojUseWarpBil(f_noext + ".bil", shgtif, maxExtent)
         mathranokay = True
         if varprops[2]:
             # NOTE: enamedict populated only for prior product numbers
-            mathranokay = RasterMath(shgtif,shgtifmath,varcode,enameDict)
+            mathranokay = RasterMath(shgtif, shgtifmath, varcode, enameDict)
 
         else:
             shgtifmath = shgtif
@@ -152,30 +152,32 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
                 ysize = int(fullof[3])
                 dsProj = ds.GetProjection()
 
-                cliparr = ds.GetRasterBand(1).ReadAsArray(int(round(fullof[0])),
-                                int(round(fullof[1])),
-                                xsize,ysize)
-                outtmpname = os.path.join(tmpdir,extentarr[0] + "tmp.asc")
+                cliparr = ds.GetRasterBand(1).ReadAsArray(
+                    int(round(fullof[0])), int(round(fullof[1])),
+                    xsize, ysize
+                )
+                outtmpname = os.path.join(tmpdir, extentarr[0] + "tmp.asc")
                 driver = gdal.GetDriverByName("MEM")
 
-                clipgeot = [subext[0],cellsize,0,subext[3],0,-cellsize]
-                extentGProps[extentarr[0]] = [dsProj,clipgeot,xsize,ysize,nodata]
+                clipgeot = [subext[0], cellsize, 0, subext[3], 0, -cellsize]
+                extentGProps[extentarr[0]] = [
+                    dsProj, clipgeot, xsize, ysize, nodata]
 
-                clipds = driver.Create("",xsize,ysize,1,GDT_Float32)
+                clipds = driver.Create("", xsize, ysize, 1, GDT_Float32)
                 clipds.SetGeoTransform(clipgeot)
                 clipds.SetProjection(ds.GetProjection())
                 clipds.GetRasterBand(1).SetNoDataValue(nodata)
-                clipds.GetRasterBand(1).WriteArray(cliparr,0,0)
+                clipds.GetRasterBand(1).WriteArray(cliparr, 0, 0)
                 clipds.FlushCache()
                 ascbasename = extentarr[0] + "_" + \
-                    varprops[0][2].replace(" ","_").lower() + ymdDate
-                CreateASCII(clipds,ascbasename,tmpdir)
+                    varprops[0][2].replace(" ", "_").lower() + ymdDate
+                CreateASCII(clipds, ascbasename, tmpdir)
                 clipds = None
                 ds = None
 
-                tmpasc = os.path.join(tmpdir,ascbasename + ".asc")
+                tmpasc = os.path.join(tmpdir, ascbasename + ".asc")
                 projasc = os.path.join(projascdir, ascbasename + ".asc")
-                shutil.copy(tmpasc,projasc)
+                shutil.copy(tmpasc, projasc)
                 shutil.copy(
                     os.path.join(tmpdir, ascbasename + "tmp.prj"),
                     os.path.join(projascdir, ascbasename + ".prj")
@@ -186,8 +188,8 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
                 dtype = varprops[1]
 
                 path = "/SHG/" + extentarr[0].upper() + "/" + p[2] + \
-                    "/" + p[3] +"/" + p[4] + "/" + p[5] + "/"
-                WriteToDSS(asc2dssdir,projasc,dssfile,dtype,path)
+                    "/" + p[3] + "/" + p[4] + "/" + p[5] + "/"
+                WriteToDSS(asc2dssdir, projasc, dssfile, dtype, path)
                 outarr = None
                 cliparr = None
 
@@ -196,25 +198,25 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         # Clean up the temp dir.
         shutil.rmtree(tmpdir)
         return None
-    
+
     for varcode in zerolist:
         varprops = PropDict[varcode]
         for extentarr in extents_list:
             p = varprops[0]
             dtype = varprops[1]
             path = "/SHG/" + extentarr[0].upper() + "/" + p[2] + \
-                "/" + p[3] +"/" + p[4] + "/" + p[5] + "/"
+                "/" + p[3] + "/" + p[4] + "/" + p[5] + "/"
             ascbasename = extentarr[0] + "_" + \
-                    varprops[0][2].replace(" ","_").lower() + ymdDate
-            tmpasc = os.path.join(tmpdir,ascbasename + ".asc")
+                varprops[0][2].replace(" ", "_").lower() + ymdDate
+            tmpasc = os.path.join(tmpdir, ascbasename + ".asc")
             projasc = os.path.join(projascdir, ascbasename + ".asc")
 
-            ZeroDStoAsc2(extentGProps[extentarr[0]],ascbasename,tmpdir)
-            shutil.copy(tmpasc,projasc)
+            ZeroDStoAsc2(extentGProps[extentarr[0]], ascbasename, tmpdir)
+            shutil.copy(tmpasc, projasc)
             shutil.copy(os.path.join(tmpdir, ascbasename + "tmp.prj"),
                         os.path.join(projascdir, ascbasename + ".prj"))
             dssdunits = varprops[3]
-            WriteToDSS2(asc2dssdir,projasc,dssfile,dtype,path,dssdunits)
+            WriteToDSS2(asc2dssdir, projasc, dssfile, dtype, path, dssdunits)
 
     # Clean up the temp dir.
     shutil.rmtree(tmpdir)
@@ -222,20 +224,20 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     # Write out file to track that we've run for this day.
     with open(histfile, "w") as fo:
         dstr = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        fo.write(process_date.strftime("%a %b %d %H:%M:%S %Y" ))
+        fo.write(process_date.strftime("%a %b %d %H:%M:%S %Y"))
         fo.close
     return dssfile
 
 
 # Helper functions below.  Here be dragons.
 def CreateASCII(inds, ascname, tmpdir):
-    outtmpname = os.path.join(tmpdir,ascname + "tmp.asc")
+    outtmpname = os.path.join(tmpdir, ascname + "tmp.asc")
     ascdriver = gdal.GetDriverByName("AAIGrid")
-    outds = ascdriver.CreateCopy(outtmpname,inds,0,
-                                 options = ['DECIMAL_PRECISION=4'])
+    outds = ascdriver.CreateCopy(outtmpname, inds, 0,
+                                 options=['DECIMAL_PRECISION=4'])
     outds = None
-    outasc = os.path.join(tmpdir,ascname + ".asc")
-    RewriteASCII(outtmpname,outasc)
+    outasc = os.path.join(tmpdir, ascname + ".asc")
+    RewriteASCII(outtmpname, outasc)
     return
 
 
@@ -243,8 +245,8 @@ def GetDatasetExtent(ds):
     """Usage: get_extent(input_dataset)  """
     geot = ds.GetGeoTransform()
     cellsize = geot[1]
-    return ([geot[0],geot[3] - (ds.RasterYSize * cellsize),
-                 geot[0] + (ds.RasterXSize * cellsize),geot[3]])
+    return ([geot[0], geot[3] - (ds.RasterYSize * cellsize),
+             geot[0] + (ds.RasterXSize * cellsize), geot[3]])
 
 
 def GetDSSBaseName(inDT):
@@ -258,7 +260,7 @@ def GetDSSBaseName(inDT):
 
 def GetGridExtent(infile):
     driver = gdal.GetDriverByName("AIG")
-    ds = gdal.Open(infile,GA_ReadOnly)
+    ds = gdal.Open(infile, GA_ReadOnly)
     if ds is None:
         raise IOError("Could not open '%s'" % (infile))
 
@@ -267,8 +269,8 @@ def GetGridExtent(infile):
     YSize = ds.RasterYSize
     XSize = ds.RasterXSize
     ds = None
-    return (Extent(geot[0],geot[3] - (YSize * cellsize),
-                 geot[0] + (XSize * cellsize),geot[3]))
+    return (Extent(geot[0], geot[3] - (YSize * cellsize),
+                   geot[0] + (XSize * cellsize), geot[3]))
 
 
 def getMaxExtent(extents):
@@ -278,11 +280,11 @@ def getMaxExtent(extents):
     ymax = extents[0][1][3]
     for ext in extents:
         ecoords = ext[1]
-        xmin = min(xmin,ecoords[0])
-        ymin = min(ymin,ecoords[1])
-        xmax = max(xmax,ecoords[2])
-        ymax = max(ymax,ecoords[3])
-    return Extent(xmin,ymin,xmax,ymax)
+        xmin = min(xmin, ecoords[0])
+        ymin = min(ymin, ecoords[1])
+        xmax = max(xmax, ecoords[2])
+        ymax = max(ymax, ecoords[3])
+    return Extent(xmin, ymin, xmax, ymax)
 
 
 def is_number(s):
@@ -301,10 +303,10 @@ def min_box_os(ext1, ext2, cellsize):
     extent.  These can be used to subset images using ReadAsArray (e.g.)
     Input extents needs to be lists of (xmin,ymin,xmax,ymax).
     """
-    maxxl = max(ext1[0],ext2[0])
-    minxr = min(ext1[2],ext2[2])
-    maxyb = max(ext1[1],ext2[1])
-    minyt = min(ext1[3],ext2[3])
+    maxxl = max(ext1[0], ext2[0])
+    minxr = min(ext1[2], ext2[2])
+    maxyb = max(ext1[1], ext2[1])
+    minyt = min(ext1[3], ext2[3])
 
     offx1 = 0.0
     offx2 = 0.0
@@ -323,20 +325,19 @@ def min_box_os(ext1, ext2, cellsize):
     xsize = (minxr - maxxl) / cellsize
     ysize = (minyt - maxyb) / cellsize
 
-    os1 = (offx1,offy1,xsize,ysize)
-    os2 = (offx2,offy2,xsize,ysize)
+    os1 = (offx1, offy1, xsize, ysize)
+    os2 = (offx2, offy2, xsize, ysize)
 
-    return os1,os2
+    return os1, os2
 
 
 def RawFileManip(file_noext, masterhdr):
     ''' Replaces header with custom header file and renames .dat to .bil '''
     os.remove(file_noext + ".Hdr")
-    shutil.copy(masterhdr,file_noext + ".hdr")
+    shutil.copy(masterhdr, file_noext + ".hdr")
     if os.path.exists(file_noext + ".bil"):
         os.remove(file_noext + ".bil")
-    os.rename(file_noext + ".dat",file_noext + ".bil")
-    
+    os.rename(file_noext + ".dat", file_noext + ".bil")
 
 
 def ReprojUseWarpBil(infile, outfile, ext):
@@ -344,13 +345,13 @@ def ReprojUseWarpBil(infile, outfile, ext):
               "+lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'")
     from_srs = '"+proj=longlat +datum=WGS84"'
 
-    cmdlist = ' '.join(["gdalwarp","-s_srs",from_srs,"-t_srs",to_srs,
-                        "-r","bilinear","-srcnodata","-9999",
-                        "-dstnodata","-9999",
-                        "-tr","2000","-2000","-tap",
-                        "-te",str(ext.xmin),str(ext.ymin),
-                        str(ext.xmax),str(ext.ymax),
-                        infile,outfile])
+    cmdlist = ' '.join(["gdalwarp", "-s_srs", from_srs, "-t_srs", to_srs,
+                        "-r", "bilinear", "-srcnodata", "-9999",
+                        "-dstnodata", "-9999",
+                        "-tr", "2000", "-2000", "-tap",
+                        "-te", str(ext.xmin), str(ext.ymin),
+                        str(ext.xmax), str(ext.ymax),
+                        infile, outfile])
     print cmdlist
     proc = subprocess.Popen(cmdlist, shell=True,
                             stdout=subprocess.PIPE,
@@ -364,30 +365,30 @@ def ReprojUseWarpBil(infile, outfile, ext):
 
 
 def RewriteASCII(inasc, outasc):
-    with open(outasc,"w") as fo:
-        with open(inasc,"r") as fi:
+    with open(outasc, "w") as fo:
+        with open(inasc, "r") as fi:
             for line in fi:
                 newline = line.strip()
                 if newline:
-                    fo.write(newline +"\n")
+                    fo.write(newline + "\n")
             fi.close
         fo.close
 
 
 def RewriteASCII_flt(inasc, outasc):
     prec = 1
-    with open(outasc,"w") as fo:
-        with open(inasc,"r") as fi:
+    with open(outasc, "w") as fo:
+        with open(inasc, "r") as fi:
             for line in fi:
                 newline = line.strip()
                 if newline:
                     splitline = newline.split()
                     if not is_number(splitline[0]):
-                        fo.write(newline +"\n")
+                        fo.write(newline + "\n")
                     else:
                         y = [float(elem) for elem in splitline]
                         z = [round(elem, prec) for elem in y]
-                        fo.write(" ".join(map(str,z)) +"\n")
+                        fo.write(" ".join(map(str, z)) + "\n")
             fi.close
         fo.close
 
@@ -397,12 +398,9 @@ def RasterMath(shgtif, shgtifmath, varcode, nameDict):
     #   1034 data (swe) listed in nameDict is same size as 1038 data.  This
     #   is the case currently b/c of gdalwarp process
 
-    Status = False
-
     driver = gdal.GetDriverByName("GTiff")
-    ds = gdal.Open(shgtif,GA_ReadOnly)
+    ds = gdal.Open(shgtif, GA_ReadOnly)
     if ds is None:
-        #raise IOError("Could not open '%s'" % (shgtif))
         return False
 
     in_geot = ds.GetGeoTransform()
@@ -412,42 +410,49 @@ def RasterMath(shgtif, shgtifmath, varcode, nameDict):
 
     band = ds.GetRasterBand(1)
     nodata = band.GetNoDataValue()
-    arr = band.ReadAsArray(0,0,xsize,ysize).astype(np.dtype("float32"))
+    arr = band.ReadAsArray(0, 0, xsize, ysize).astype(np.dtype("float32"))
 
     if varcode == "1038":
-        #Cold Content
+        # Cold Content
         sweasc = nameDict["1034"]
 
-        #sweds = gdal.Open(swetif,GA_ReadOnly)
-        sweds = gdal.Open(sweasc,GA_ReadOnly)
+        sweds = gdal.Open(sweasc, GA_ReadOnly)
         if sweds is None:
             return False
-        #swe ds will have same boundaries and cell size as cold content
 
-        swearr = sweds.GetRasterBand(1).ReadAsArray(0,0,xsize,ysize).astype(np.dtype("float32"))
-        ccarr = np.where(arr == nodata,nodata,arr - 273.15)
-        newarr = np.where(ccarr >= 0,0,
+        # SWE ds will have same boundaries and cell size as cold content
+        swearr = sweds.GetRasterBand(1).ReadAsArray(
+            0, 0, xsize, ysize).astype(np.dtype("float32"))
+        ccarr = np.where(arr == nodata, nodata, arr - 273.15)
+        newarr = np.where(ccarr >= 0, 0,
                           np.where((swearr == nodata) | (ccarr == nodata),
-                                    nodata,swearr * 2114 * ccarr / 333000))
+                                   nodata, swearr * 2114 * ccarr / 333000))
     elif varcode == "1044":
-        #Snow Melt
-        newarr = np.where(arr == nodata,nodata,arr / 100.0)
+        # Snow Melt
+        newarr = np.where(arr == nodata, nodata, arr / 100.0)
     else:
         newarr = arr
 
     dsout = driver.Create(shgtifmath, xsize, ysize, 1, gdal.GDT_Float32,
-                          options = ['COMPRESS=LZW'])
+                          options=['COMPRESS=LZW'])
     dsout.SetGeoTransform(in_geot)
     dsout.SetProjection(ds.GetProjection())
     dsout.GetRasterBand(1).SetNoDataValue(nodata)
     dsout.GetRasterBand(1).WriteArray(newarr)
     dsout.FlushCache()
-    dsout.GetRasterBand(1).GetStatistics(0,1)
+    dsout.GetRasterBand(1).GetStatistics(0, 1)
 
-    arr = None
+    # Close any potentially open datasets.
     dsout = None
-    Status = True
-    return Status
+    newarr = None
+    swearr = None
+    ccarr = None
+    sweds = None
+    arr = None
+    band = None
+    ds = None
+
+    return True
 
 
 def SetProps(inDate, basin):
@@ -457,31 +462,31 @@ def SetProps(inDate, basin):
 
     DSSdate = inDate.strftime("%d%b%Y").upper() + ":0600"
     DSSdateYest = (inDate - datetime.timedelta(1)).strftime("%d%b%Y").upper() \
-         + ":0600"
+        + ":0600"
     bup = basin.upper()
     inDict = {}
 
     # SWE
-    inDict["1034"] = [["SHG",bup,"SWE",DSSdate,"","SNODAS"],
-                      "INST-VAL",False]
+    inDict["1034"] = [["SHG", bup, "SWE", DSSdate, "", "SNODAS"],
+                      "INST-VAL", False]
     # Snow Depth
-    inDict["1036"] = [["SHG",bup,"SNOW DEPTH",DSSdate,"","SNODAS"],
-                      "INST-VAL",False]
+    inDict["1036"] = [["SHG", bup, "SNOW DEPTH", DSSdate, "", "SNODAS"],
+                      "INST-VAL", False]
     # Cold Content
-    inDict["1038"] = [["SHG",bup,"COLD CONTENT",DSSdate,"","SNODAS"],
-                      "INST-VAL",True]
+    inDict["1038"] = [["SHG", bup, "COLD CONTENT", DSSdate, "", "SNODAS"],
+                      "INST-VAL", True]
     # Snow Melt
-    inDict["1044"] = [["SHG",bup,"SNOW MELT",DSSdateYest,DSSdate,
-                      "SNODAS"], "PER-CUM",True]
+    inDict["1044"] = [["SHG", bup, "SNOW MELT", DSSdateYest, DSSdate,
+                       "SNODAS"], "PER-CUM", True]
     # Liquid Water (Zero)
-    inDict["0001"] = [["SHG",bup,"LIQUID WATER",DSSdate,"","ZERO"],
-                      "INST-VAL",False,"MM"]
+    inDict["0001"] = [["SHG", bup, "LIQUID WATER", DSSdate, "", "ZERO"],
+                      "INST-VAL", False, "MM"]
     # Cold Content ATI (Zero)
-    inDict["0002"] = [["SHG",bup,"COLD CONTENT ATI",DSSdate,"","ZERO"],
-                      "INST-VAL",False,"DEG C"]
+    inDict["0002"] = [["SHG", bup, "COLD CONTENT ATI", DSSdate, "", "ZERO"],
+                      "INST-VAL", False, "DEG C"]
     # Melt Rate ATI (Zero)
-    inDict["0003"] = [["SHG",bup,"MELTRATE ATI",DSSdate,"","ZERO"],
-                      "INST-VAL",False,"DEGC-D"]
+    inDict["0003"] = [["SHG", bup, "MELTRATE ATI", DSSdate, "", "ZERO"],
+                      "INST-VAL", False, "DEGC-D"]
     return inDict
 
 
@@ -499,7 +504,7 @@ def UnzipLinux(origfile_noext, file_noext):
         if os.path.exists(file_noext + output_ext):
             os.remove(file_noext + output_ext)
 
-    tar = tarfile.open(origfile_noext + '.grz','r')
+    tar = tarfile.open(origfile_noext + '.grz', 'r')
     tar.extractall(pname)
 
     # Do one more layer of extraction if needed.
@@ -508,7 +513,7 @@ def UnzipLinux(origfile_noext, file_noext):
         if os.path.isfile(file_noext + output_ext + '.gz'):
             # os.chdir(pname)
             cmdlist = ['gunzip', gz_filename]
-            proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE, 
+            proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             stdout, stderr = proc.communicate()
             exit_code = proc.wait()
@@ -518,15 +523,16 @@ def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
     pname = os.path.dirname(inasc)
     bname = os.path.basename(inasc)
     os.chdir(pname)
-    asc2dsscmd = os.path.join(asc2dssdir,"asc2dssGriddash")
+    asc2dsscmd = os.path.join(asc2dssdir, "asc2dssGriddash")
     cmdlist = [
-        "python", asc2dsscmd, "gridtype=SHG","dunits=MM",
+        "python", asc2dsscmd, "gridtype=SHG", "dunits=MM",
         "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
         "path=" + path
     ]
     print pname
     print cmdlist
-    proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     exit_code = proc.wait()
 
@@ -541,16 +547,16 @@ def WriteToDSS2(asc2dssdir, inasc, outdss, dtype, path, dunits):
     pname = os.path.dirname(inasc)
     bname = os.path.basename(inasc)
     os.chdir(pname)
-    asc2dsscmd = os.path.join(asc2dssdir,"asc2dssGriddash")
-    cmdlist = ["python",asc2dsscmd,"gridtype=SHG","dunits=" + dunits, \
-               "dtype=" + dtype,"in=" + bname,"dss=" + outdss, \
+    asc2dsscmd = os.path.join(asc2dssdir, "asc2dssGriddash")
+    cmdlist = ["python", asc2dsscmd, "gridtype=SHG", "dunits=" + dunits,
+               "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
                "path=" + path]
     print pname
     print cmdlist
-    proc = subprocess.Popen(cmdlist,stdout=subprocess.PIPE,
+    proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
-    stdout,stderr=proc.communicate()
-    exit_code=proc.wait()
+    stdout, stderr = proc.communicate()
+    exit_code = proc.wait()
 
     if exit_code:
         raise RuntimeError(stderr)
@@ -564,21 +570,21 @@ def ZeroDStoAsc2(gProps, ascname, tmpdir):
     ysize = gProps[3]
 
     memdrv = gdal.GetDriverByName("MEM")
-    memds = memdrv.Create("",xsize,ysize,1,gdal.GDT_Byte)
+    memds = memdrv.Create("", xsize, ysize, 1, gdal.GDT_Byte)
     memds.SetProjection(gProps[0])
     memds.SetGeoTransform(gProps[1])
     memds.GetRasterBand(1).SetNoDataValue(-9999)
-    ndarr = np.zeros([ysize,xsize],np.dtype('byte'))
-    memds.GetRasterBand(1).WriteArray(ndarr,0,0)
+    ndarr = np.zeros([ysize, xsize], np.dtype('byte'))
+    memds.GetRasterBand(1).WriteArray(ndarr, 0, 0)
     memds.FlushCache()
 
-    outtmpname = os.path.join(tmpdir,ascname + "tmp.asc")
+    outtmpname = os.path.join(tmpdir, ascname + "tmp.asc")
     ascdriver = gdal.GetDriverByName("AAIGrid")
     outds = ascdriver.CreateCopy(outtmpname, memds, 0,
                                  options=['DECIMAL_PRECISION=0'])
     outds = None
-    outasc = os.path.join(tmpdir,ascname + ".asc")
-    RewriteASCII(outtmpname,outasc)
+    outasc = os.path.join(tmpdir, ascname + ".asc")
+    RewriteASCII(outtmpname, outasc)
 
     ndarr = None
     memds = None
