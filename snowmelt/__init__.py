@@ -539,7 +539,7 @@ def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
     ]
     if not config.SUBPROCESS_QUIET:
         print pname
-        print cmdlist
+        print ' '.join(cmdlist)
     proc = subprocess.Popen(
         cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
