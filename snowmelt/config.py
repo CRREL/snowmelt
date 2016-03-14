@@ -188,3 +188,9 @@ EXTENTS = {
         ],
     },
 }
+
+PROJECT_EXTENTS = {
+    'missouri_river': [     
+        ['Missouri River', [-1399054, 1546181, 514768, 3049874]],
+    ],
+}

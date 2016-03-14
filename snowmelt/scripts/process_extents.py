@@ -43,35 +43,50 @@ def main():
         default=datetime.datetime.now().strftime('%Y%m%d'), 
         help='Date should be in YYYYMMDD format. Can also provide a range '
              'of dates with YYYYMMDD-YYYYMMDD format.')
-    parser.add_option('-a', '--all', dest='all_extents', action='store_true',
+    parser.add_option('-a', '--all', dest='all', action='store_true',
         default=False, help='Parse all exents defined in config.py')
-    parser.add_option('--division', dest='division',
-        default=None, help='Parse all exents defined in config.py')
+    parser.add_option('--division', dest='division', default=None,
+        help='Parse all exents for a given division.')
     parser.add_option('--dry-run', dest='dry_run', action='store_true', 
         default=False, help='Dry run of the script.')
     parser.add_option('--scp', dest='run_scp', action='store_true', 
         default=False, help='Copy files to target location specfied in config '
                             'file upon completion of processing.')
+    parser.add_option('-p', '--project', dest='project', default=None,
+         help='Parse extents for a given project, defined in PROJECT_EXTENTS. '
+              '--scp is not supported for this option.')
 
     options, args = parser.parse_args()
 
-    # Check that arguments make sense.
-    if options.all_extents and len(args) != 0:
-        print 'Error: No arguments required when using the --all option.\n'
+    # Only one of the following options may be used at a time.
+    # The options disable the use of the division and district args.
+    no_arg_opts = ('all', 'project', 'division')
+    no_arg_opt_count = 0
+    for opt in no_arg_opts:
+        if options.__dict__[opt]:
+            no_arg_opt_count += 1
+            if len(args) != 0:
+                print 'Error: Wrong number of arguments for --{0} option.\n'.format(opt)
+                parser.print_help()
+                sys.exit(1)
+    if no_arg_opt_count > 1:
+        print (
+            'Error: Only one of the following options may be '
+            'used at a time: {0}'.format(
+                ' '.join(['--' + opt for opt in no_arg_opts])
+            )
+        )
         parser.print_help()
         sys.exit(1)
-    elif options.division and len(args) != 0:
-        print 'Error: No arguments required when using the --division option.\n'
-        parser.print_help()
-        sys.exit(1)
-    elif not (options.all_extents or options.division) and len(args) != 2:
-        print 'Error: Script requires two arguments.\n'
+
+    if no_arg_opt_count == 0 and len(args) != 2:
+        print 'Error: Script requires district and division arguments.\n'
         parser.print_help()
         sys.exit(1)
 
     # Grab parameters based on division and district inputs.
     inputs_list = []
-    if options.all_extents:
+    if options.all:
         for division in config.EXTENTS:
             for district in config.EXTENTS[division]:
                 inputs_list += [
@@ -87,6 +102,16 @@ def main():
         except KeyError:
             print ('Could not find extents list for '
                    'Division "{0}"').format(division)
+            sys.exit(1)
+    elif options.project:
+        try:
+            extents_list = config.PROJECT_EXTENTS[options.project]
+            inputs_list = [('projects', options.project, extents_list)]
+            # Don't run SCP transfer if we're running for a project.
+            options.run_scp = False
+        except KeyError:
+            print ('Could not find extents list for '
+                   'project "{0}"').format(options.project)
             sys.exit(1)
     else:
         division, district = args
