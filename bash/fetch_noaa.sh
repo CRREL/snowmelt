@@ -1,6 +1,6 @@
 #! /usr/bin/bash
-dt=`date +%Y%m --date='-1 day'`
-dth=`date +%Y%m%d --date='-1 day'`
+dt=`date +%Y%m`
+dth=`date +%Y%m%d`
 
 # Variables for legacy us-prefixed data stream.
 #swe=us_ssmv11034tS__T0001TTNATS
