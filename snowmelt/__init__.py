@@ -19,7 +19,8 @@ from snowmelt import config
 Extent = namedtuple('Extent', 'xmin,ymin,xmax,ymax')  # Convert to a class?
 
 
-def process_extents(div_name, dist_name, process_date, extents_list, options):
+def process_extents(div_name, dist_name, process_date,
+                    src_dir, extents_list, options):
     ''' Main function for processing extents.  Calls lots of helper
     and utility functions. 
     div_name: string - Name of division, used in output file format.
@@ -35,26 +36,22 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         if options.verbose:
             print to_print
 
+    def clean_up_tmp_dir(tmp_dir):
+        if not options.keep_tmp_dir:
+            shutil.rmtree(tmp_dir)
+
     topdir = config.TOP_DIR
 
-    if process_date.year > 2012:
-        srcrddir = config.SRC_DIR
-    elif process_date.year == 2012:
-        srcrddir = config.ARCHIVE_DIR_2012
-    else:
-        month_path = process_date.strftime('%Y/%B')
-        srcrddir = os.path.join(config.ARCHIVE_DIR, month_path)
-
-    verbose_print('Source directory: {0}'.format(srcrddir))
+    verbose_print('Source directory: {0}'.format(src_dir))
 
     # Use 'us' prefix for dates before January 24, 2011.
+    dataset_type = 'zz'
+    nodata_val = '-9999'
     if process_date < datetime.datetime(2011, 1, 24, 0, 0):
         dataset_type = 'us'
-    else:
-        dataset_type = 'zz'
+        nodata_val = '55537'
 
     keydir = os.path.join(topdir, "key")
-    # rddir = os.path.join(topdir, "rawdata")
     projdir = os.path.join(topdir, div_name, dist_name)
 
     projresdir = os.path.join(projdir, "results_sn")
@@ -88,6 +85,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     tmpdir = os.path.join(projresdir, "tmp" + dstr)
     os.mkdir(tmpdir)
 
+    # Set up a dictionary mapping the various properties to their DSS names.
     PropDict = SetProps(process_date, div_name)
     enameDict = {}
     zerolist = ["0001", "0002", "0003"]
@@ -96,26 +94,22 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
     dssbasename = GetDSSBaseName(process_date)
     dssfile = os.path.join(projdssdir, dssbasename)
 
+    # Define our files and make sure they all exist.
     snodaslist = [
         dataset_type + "_ssmv11034tS__T0001TTNATS" + ymdDate + "05HP001",
         dataset_type + "_ssmv11036tS__T0001TTNATS" + ymdDate + "05HP001",
         dataset_type + "_ssmv11038wS__A0024TTNATS" + ymdDate + "05DP001",
         dataset_type + "_ssmv11044bS__T0024TTNATS" + ymdDate + "05DP000",
     ]
-    FileStatus = True
     for f in snodaslist:
-        if not os.path.isfile(os.path.join(srcrddir, f + ".grz")):
-            FileStatus = False
-
-    if not FileStatus:
-        print "All source data not available."
-        # Clean up the temp dir.
-        shutil.rmtree(tmpdir)
-        return None
+        if not os.path.isfile(os.path.join(src_dir, f + ".grz")):
+            print "Missing at least one source data file:", f
+            clean_up_tmp_dir(tmpdir)
+            return None
 
     # Loop through our source SNODAS files.
     for f in snodaslist:
-        origf_noext = os.path.join(srcrddir, f)
+        origf_noext = os.path.join(src_dir, f)
         f_noext = os.path.join(tmpdir, f)
 
         varcode = f[8:12]
@@ -132,7 +126,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
         UnzipLinux(origf_noext, f_noext)
         RawFileManip(f_noext, masterhdr)
 
-        ReprojUseWarpBil(f_noext + ".bil", shgtif, maxExtent)
+        ReprojUseWarpBil(f_noext + ".bil", shgtif, maxExtent, nodata_val)
         mathranokay = True
         if varprops[2]:
             # NOTE: enamedict populated only for prior product numbers
@@ -145,7 +139,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
             for extentarr in extents_list:
                 ds = gdal.Open(shgtifmath)
                 if ds is None:
-                    print 'Could not open ' + fname
+                    print 'Could not open ' + shgtifmath
                     return None
                 nodata = ds.GetRasterBand(1).GetNoDataValue()
                 fullext = GetDatasetExtent(ds)
@@ -200,8 +194,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
 
     if len(extentGProps) == 0:
         print "An error occurred identifying extent properties."
-        # Clean up the temp dir.
-        shutil.rmtree(tmpdir)
+        clean_up_tmp_dir(tmpdir)
         return None
 
     for varcode in zerolist:
@@ -223,8 +216,7 @@ def process_extents(div_name, dist_name, process_date, extents_list, options):
             dssdunits = varprops[3]
             WriteToDSS2(asc2dssdir, projasc, dssfile, dtype, path, dssdunits)
 
-    # Clean up the temp dir.
-    shutil.rmtree(tmpdir)
+    clean_up_tmp_dir(tmpdir)
 
     # Write out file to track that we've run for this day.
     with open(histfile, "w") as fo:
@@ -345,14 +337,15 @@ def RawFileManip(file_noext, masterhdr):
     os.rename(file_noext + ".dat", file_noext + ".bil")
 
 
-def ReprojUseWarpBil(infile, outfile, ext):
+def ReprojUseWarpBil(infile, outfile, ext, nodata='-9999'):
     to_srs = ("'+proj=aea +lat_1=29.5n +lat_2=45.5n +lat_0=23.0n "
               "+lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'")
     from_srs = '"+proj=longlat +datum=WGS84"'
 
     cmdlist = ' '.join(["gdalwarp", "-s_srs", from_srs, "-t_srs", to_srs,
-                        "-r", "bilinear", "-srcnodata", "-9999",
-                        "-dstnodata", "-9999",
+                        "-r", "bilinear",
+                        "-srcnodata", nodata,
+                        "-dstnodata", nodata,
                         "-tr", "2000", "-2000", "-tap",
                         "-te", str(ext.xmin), str(ext.ymin),
                         str(ext.xmax), str(ext.ymax),
@@ -404,7 +397,7 @@ def RewriteASCII_flt(inasc, outasc):
 def RasterMath(shgtif, shgtifmath, varcode, nameDict):
     # VarCode 1038:  Converts snow pack temp to CC.  ** Assumes that
     #   1034 data (swe) listed in nameDict is same size as 1038 data.  This
-    #   is the case currently b/c of gdalwarp process
+    #   is the case currently because of gdalwarp process.
 
     driver = gdal.GetDriverByName("GTiff")
     ds = gdal.Open(shgtif, GA_ReadOnly)
@@ -424,11 +417,12 @@ def RasterMath(shgtif, shgtifmath, varcode, nameDict):
         # Cold Content
         sweasc = nameDict["1034"]
 
+        # Make sure the SWE dataset has already been written.
         sweds = gdal.Open(sweasc, GA_ReadOnly)
         if sweds is None:
             return False
 
-        # SWE ds will have same boundaries and cell size as cold content
+        # SWE ds will have same boundaries and cell size as cold content.
         swearr = sweds.GetRasterBand(1).ReadAsArray(
             0, 0, xsize, ysize).astype(np.dtype("float32"))
         ccarr = np.where(arr == nodata, nodata, arr - 273.15)

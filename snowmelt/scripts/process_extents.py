@@ -22,6 +22,19 @@ DATE_REGEX = re.compile(r'^(?P<start_date>\d{8})-(?P<end_date>\d{8})$')
 
 def main():
 
+    def get_src_dir_by_date(proc_date):
+        # Helper function to find the source data, which is stored in
+        # a few different places on rsgis-base.
+        if options.src_dir:
+            return options.src_dir
+        elif process_date.year > 2012:
+            return config.SRC_DIR
+        elif process_date.year == 2012:
+            return config.ARCHIVE_DIR_2012
+        else:
+            month_path = process_date.strftime('%Y/%B')
+            return os.path.join(config.ARCHIVE_DIR, month_path)
+
     def verbose_print(to_print):
         if options.verbose or options.dry_run:
             print to_print
@@ -47,14 +60,22 @@ def main():
         default=False, help='Parse all exents defined in config.py')
     parser.add_option('--division', dest='division', default=None,
         help='Parse all exents for a given division.')
-    parser.add_option('--dry-run', dest='dry_run', action='store_true', 
-        default=False, help='Dry run of the script.')
     parser.add_option('--scp', dest='run_scp', action='store_true', 
         default=False, help='Copy files to target location specfied in config '
                             'file upon completion of processing.')
     parser.add_option('-p', '--project', dest='project', default=None,
          help='Parse extents for a given project, defined in PROJECT_EXTENTS. '
-              '--scp is not supported for this option.')
+              '--scp is currently disabled for this option.')
+
+    # Debugging options.
+    parser.add_option('--dry-run', dest='dry_run', action='store_true',
+        default=False, help='Dry run of the script.')
+    parser.add_option('-k', '--keep', dest='keep_tmp_dir', action='store_true',
+        default=False, help='Keep all intermediate files. The script '
+                            'removes intermediate files by default.')
+    parser.add_option('-s', '--srcdir', dest='src_dir', default=None,
+        help='Use a custom directory for source data. Otherwise '
+             'uses directory defined in config file. ')
 
     options, args = parser.parse_args()
 
@@ -166,6 +187,7 @@ def main():
                 new_data = snowmelt.process_extents(
                     division, district,
                     process_date + datetime.timedelta(hours=2), # 2am.
+                    get_src_dir_by_date(process_date),
                     extents_list,
                     options,
                 )
