@@ -1,5 +1,6 @@
 # Original imports, will try to cull these a bit.
 import os
+import shutil
 import sys
 import re
 import datetime
@@ -170,14 +171,28 @@ def main():
 
     # Run the actual grid processing for each set of inputs and dates.
     transfer_list = set()
-    for input_list in inputs_list:
-        division, district, extents_list = input_list
-        verbose_print('-' * 64)
-        verbose_print('{0} {1} Watersheds:'.format(division.upper(), 
-                                                     district.upper()))
-        for extent in extents_list:
-            verbose_print('{0}: {1}'.format(extent[0], extent[1]))
-        for process_date in process_dates:
+    
+    # Loop through by date, so we only need to do the source data 
+    # manipulation once per date. 
+    for process_date in process_dates:
+        
+        # Fetch and transform source data.
+        print 'Fetching source data for:', process_date.strftime('%Y.%m.%d')
+        unzip_dir = snowmelt.prepare_source_data_for_date(
+            process_date, get_src_dir_by_date(process_date)
+        )
+        if unzip_dir is None:
+            print 'Skipping date:', process_date.strftime('%Y.%m.%d')
+            continue
+
+        for input_list in inputs_list:
+            division, district, extents_list = input_list
+            verbose_print('-' * 64)
+            verbose_print('{0} {1} Watersheds:'.format(division.upper(), 
+                                                         district.upper()))
+            for extent in extents_list:
+                verbose_print('{0}: {1}'.format(extent[0], extent[1]))
+
             verbose_print(
                 'Processing extents for location {0} - {1}, date {2}'.format(
                     division, district, process_date
@@ -187,7 +202,7 @@ def main():
                 new_data = snowmelt.process_extents(
                     division, district,
                     process_date + datetime.timedelta(hours=2), # 2am.
-                    get_src_dir_by_date(process_date),
+                    unzip_dir,
                     extents_list,
                     options,
                 )
@@ -195,6 +210,10 @@ def main():
                     transfer_list.add((division, district, new_data))
             else:
                 transfer_list.add(division)
+
+        if not options.keep_tmp_dir and not options.dry_run:
+            verbose_print('Removing temp unzipped dir: {0}'.format(unzip_dir))
+            shutil.rmtree(unzip_dir)
 
     finish = timeit.default_timer()
     print 'Finished Processing {0} {1}  (Duration = {2})'.format(

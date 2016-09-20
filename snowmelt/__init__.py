@@ -18,6 +18,66 @@ from snowmelt import config
 # Global vars.  TODO Bit ugly, need to rethink how to do these.
 Extent = namedtuple('Extent', 'xmin,ymin,xmax,ymax')  # Convert to a class?
 
+SNODAS_FILENAME_LIST = [
+    "{ds}_ssmv11034tS__T0001TTNATS{ymd}05HP001",
+    "{ds}_ssmv11036tS__T0001TTNATS{ymd}05HP001",
+    "{ds}_ssmv11038wS__A0024TTNATS{ymd}05DP001",
+    "{ds}_ssmv11044bS__T0024TTNATS{ymd}05DP000",
+]
+
+
+def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
+    ''' Builds an unzip directory and extracts data from source files
+    for a given day. 
+    Returns the directory path to the unzipped files,
+    or None if missing any source data. '''
+    ymd_str = process_date.strftime('%Y%m%d')
+    unzip_dir = os.path.join(config.TOP_DIR, 'unzipped_data', ymd_str)
+    us_tif_dir = os.path.join(config.TOP_DIR, 'us_wide_tifs', ymd_str)
+    
+    # Use 'us' prefix and adjust nodata value for dates before January 24, 2011.
+    ds_type = 'zz'
+    nodata_val = '-9999'
+    if process_date < datetime.datetime(2011, 1, 24, 0, 0):
+        ds_type = 'us'
+        nodata_val = '55537'
+
+    masterhdr = os.path.join(config.TOP_DIR, 'key', ds_type + '_master.hdr')
+
+    # Create list of file names for this date.
+    snodas_src_files = [
+        f.format(ds=ds_type, ymd=ymd_str) for f in SNODAS_FILENAME_LIST
+    ]
+
+    # Make sure all files exist before trying any extractions.
+    msgs = []
+    for filename in snodas_src_files:
+        if not os.path.isfile(os.path.join(src_dir, filename + '.grz')):
+            msgs += ['Missing source data file: {0}'.format(filename)]
+    if msgs:
+        for msg in msgs:
+            print msg
+        return None
+
+    if save_tiff:
+        mkdir_p(us_tif_dir)
+
+    # Loop through our filenames and do the unzipping and other set up.
+    mkdir_p(unzip_dir)
+    for filename in snodas_src_files:
+        src_file = os.path.join(src_dir, filename)
+        unzip_file = os.path.join(unzip_dir, filename)
+        UnzipLinux(src_file, unzip_file)
+        ready_file = RawFileManip(unzip_file, masterhdr)
+        
+        # Save a full version of the day's data set.
+        if save_tiff and not os.path.isfile(ready_file):
+            shgtif = os.path.join(us_tif_dir, filename + "alb.tif")
+            print 'Saving US-wide SHG tiff file:', shgtif
+            ReprojUseWarpBil(ready_file, shgtif)
+
+    return unzip_dir
+
 
 def process_extents(div_name, dist_name, process_date,
                     src_dir, extents_list, options):
@@ -25,7 +85,6 @@ def process_extents(div_name, dist_name, process_date,
     and utility functions. 
     div_name: string - Name of division, used in output file format.
     process_date: datetime.datetime object - date for which data is desired.
-    dataset_type: string - type of dataset, usually "zz".
     extents_list: list - list of namedtuples for each watershed.
 
     Returns the path to the file if new data was written to a DSS file, 
@@ -44,45 +103,42 @@ def process_extents(div_name, dist_name, process_date,
 
     verbose_print('Source directory: {0}'.format(src_dir))
 
-    # Use 'us' prefix for dates before January 24, 2011.
+    # Use 'us' prefix and adjust nodata value for dates before January 24, 2011.
     dataset_type = 'zz'
     nodata_val = '-9999'
     if process_date < datetime.datetime(2011, 1, 24, 0, 0):
         dataset_type = 'us'
         nodata_val = '55537'
 
-    keydir = os.path.join(topdir, "key")
     projdir = os.path.join(topdir, div_name, dist_name)
 
-    projresdir = os.path.join(projdir, "results_sn")
-    projascdir = os.path.join(projresdir, "asc_files")
-    projdssdir = os.path.join(projresdir, "dss_files")
-    histdir = os.path.join(projresdir, "history")
+    projresdir = os.path.join(projdir, 'results_sn')
+    projascdir = os.path.join(projresdir, 'asc_files')
+    projdssdir = os.path.join(projresdir, 'dss_files')
+    histdir = os.path.join(projresdir, 'history')
 
     # Build our results directories if needed.
     mkdir_p(projascdir)
     mkdir_p(projdssdir)
     mkdir_p(histdir)
 
-    asc2dssdir = os.path.join(topdir, "Asc2DssGridUtility")
+    asc2dssdir = os.path.join(topdir, 'Asc2DssGridUtility')
 
-    masterhdr = os.path.join(keydir, dataset_type + "_master.hdr")
-
-    dstr = datetime.datetime.now().strftime("%y%m%d%H%M%S")
-    ymdDate = process_date.strftime("%Y%m%d")
+    dstr = datetime.datetime.now().strftime('%y%m%d%H%M%S')
+    ymdDate = process_date.strftime('%Y%m%d')
 
     # Break out if processing for the given date has already happened.
-    histfile = os.path.join(histdir, "proccomplete" + ymdDate + ".txt")
+    histfile = os.path.join(histdir, 'proccomplete' + ymdDate + '.txt')
     if os.path.isfile(histfile):
-        print "{0} {1} grids already processed for: {2}".format(
-            div_name, dist_name, process_date.strftime("%Y.%m.%d")
+        print '{0} {1} grids already processed for: {2}'.format(
+            div_name, dist_name, process_date.strftime('%Y.%m.%d')
         )
         return None
-    print "Processing {0} {1} grids for: {2}".format(
-        div_name, dist_name, process_date.strftime("%Y.%m.%d")
+    print 'Processing {0} {1} grids for: {2}'.format(
+        div_name, dist_name, process_date.strftime('%Y.%m.%d')
     )
 
-    tmpdir = os.path.join(projresdir, "tmp" + dstr)
+    tmpdir = os.path.join(projresdir, 'tmp' + dstr)
     os.mkdir(tmpdir)
 
     # Set up a dictionary mapping the various properties to their DSS names.
@@ -96,21 +152,11 @@ def process_extents(div_name, dist_name, process_date,
 
     # Define our files and make sure they all exist.
     snodaslist = [
-        dataset_type + "_ssmv11034tS__T0001TTNATS" + ymdDate + "05HP001",
-        dataset_type + "_ssmv11036tS__T0001TTNATS" + ymdDate + "05HP001",
-        dataset_type + "_ssmv11038wS__A0024TTNATS" + ymdDate + "05DP001",
-        dataset_type + "_ssmv11044bS__T0024TTNATS" + ymdDate + "05DP000",
+        s.format(ds=dataset_type, ymd=ymdDate) for s in SNODAS_FILENAME_LIST
     ]
-    for f in snodaslist:
-        if not os.path.isfile(os.path.join(src_dir, f + ".grz")):
-            print "Missing at least one source data file:", f
-            clean_up_tmp_dir(tmpdir)
-            return None
 
     # Loop through our source SNODAS files.
     for f in snodaslist:
-        origf_noext = os.path.join(src_dir, f)
-        f_noext = os.path.join(tmpdir, f)
 
         varcode = f[8:12]
         varprops = PropDict[varcode]
@@ -123,15 +169,12 @@ def process_extents(div_name, dist_name, process_date,
         shgtif = os.path.join(tmpdir, f + "alb.tif")
         shgtifmath = os.path.join(tmpdir, easiername + ".tif")
 
-        UnzipLinux(origf_noext, f_noext)
-        RawFileManip(f_noext, masterhdr)
-
-        ReprojUseWarpBil(f_noext + ".bil", shgtif, maxExtent, nodata_val)
+        src_file = os.path.join(src_dir, f + '.bil')
+        ReprojUseWarpBil(src_file, shgtif, maxExtent, nodata_val)
         mathranokay = True
         if varprops[2]:
             # NOTE: enamedict populated only for prior product numbers
             mathranokay = RasterMath(shgtif, shgtifmath, varcode, enameDict)
-
         else:
             shgtifmath = shgtif
         if mathranokay:
@@ -335,24 +378,28 @@ def RawFileManip(file_noext, masterhdr):
     if os.path.exists(file_noext + ".bil"):
         os.remove(file_noext + ".bil")
     os.rename(file_noext + ".dat", file_noext + ".bil")
+    return file_noext + ".bil"
 
 
-def ReprojUseWarpBil(infile, outfile, ext, nodata='-9999'):
+def ReprojUseWarpBil(infile, outfile, ext=None, nodata='-9999'):
     to_srs = ("'+proj=aea +lat_1=29.5n +lat_2=45.5n +lat_0=23.0n "
               "+lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'")
     from_srs = '"+proj=longlat +datum=WGS84"'
 
-    cmdlist = ' '.join(["gdalwarp", "-s_srs", from_srs, "-t_srs", to_srs,
-                        "-r", "bilinear",
-                        "-srcnodata", nodata,
-                        "-dstnodata", nodata,
-                        "-tr", "2000", "-2000", "-tap",
-                        "-te", str(ext.xmin), str(ext.ymin),
-                        str(ext.xmax), str(ext.ymax),
-                        infile, outfile])
+    cmdlist = ["gdalwarp", "-s_srs", from_srs, "-t_srs", to_srs,
+                "-r", "bilinear",
+                "-srcnodata", nodata,
+                "-dstnodata", nodata,
+                "-tr", "2000", "-2000", "-tap"]
+    if ext is not None:
+        cmdlist += ["-te", str(ext.xmin), str(ext.ymin),
+                           str(ext.xmax), str(ext.ymax),]
+    cmdlist += [infile, outfile]
+                        
+    run_cmd = ' '.join(cmdlist)
     if not config.SUBPROCESS_QUIET:
-        print cmdlist
-    proc = subprocess.Popen(cmdlist, shell=True,
+        print run_cmd
+    proc = subprocess.Popen(run_cmd, shell=True,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
@@ -362,7 +409,7 @@ def ReprojUseWarpBil(infile, outfile, ext, nodata='-9999'):
         print stdout
     if exit_code:
         raise RuntimeError(stderr)
-    return
+    return outfile
 
 
 def RewriteASCII(inasc, outasc):
