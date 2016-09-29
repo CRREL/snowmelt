@@ -9,6 +9,7 @@ ARCHIVE_DIR_2012 = '/fire/study/snow/rawdata_2012'
 SCP_TARGET_STR = \
     'cwmsgrids@cpc-cwms2.usace.army.mil:/netapp/cwmsgrids/data/watershed/{0}/{1}/'
 
+KEEP_PROCESSED_SRC_DATA = True
 SUBPROCESS_QUIET = True
 
 EXTENTS = {

@@ -26,6 +26,10 @@ SNODAS_FILENAME_LIST = [
 ]
 
 
+def print_dashes(length=64):
+    print '-' * length
+
+
 def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     ''' Builds an unzip directory and extracts data from source files
     for a given day. 
@@ -33,7 +37,7 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     or None if missing any source data. '''
     ymd_str = process_date.strftime('%Y%m%d')
     unzip_dir = os.path.join(config.TOP_DIR, 'unzipped_data', ymd_str)
-    us_tif_dir = os.path.join(config.TOP_DIR, 'us_wide_tifs', ymd_str)
+    us_tif_dir = os.path.join(config.TOP_DIR, 'conus_tiffs')
     
     # Use 'us' prefix and adjust nodata value for dates before January 24, 2011.
     ds_type = 'zz'
@@ -50,6 +54,8 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     ]
 
     # Make sure all files exist before trying any extractions.
+    print_dashes()
+    print 'Processing source data for:', process_date.strftime('%Y.%m.%d')
     msgs = []
     for filename in snodas_src_files:
         if not os.path.isfile(os.path.join(src_dir, filename + '.grz')):
@@ -57,6 +63,7 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     if msgs:
         for msg in msgs:
             print msg
+        print_dashes()
         return None
 
     if save_tiff:
@@ -67,15 +74,24 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     for filename in snodas_src_files:
         src_file = os.path.join(src_dir, filename)
         unzip_file = os.path.join(unzip_dir, filename)
-        UnzipLinux(src_file, unzip_file)
-        ready_file = RawFileManip(unzip_file, masterhdr)
+        ready_file = unzip_file + '.bil'
+        if not os.path.isfile(ready_file):
+            print 'Processing source to output file:', ready_file
+            UnzipLinux(src_file, unzip_file)
+            RawFileManip(unzip_file, masterhdr)
+        else:
+            print 'Using existing source file:', ready_file 
         
         # Save a full version of the day's data set.
-        if save_tiff and not os.path.isfile(ready_file):
-            shgtif = os.path.join(us_tif_dir, filename + "alb.tif")
-            print 'Saving US-wide SHG tiff file:', shgtif
-            ReprojUseWarpBil(ready_file, shgtif)
+        shgtif = os.path.join(us_tif_dir, filename + 'alb.tif')
+        if save_tiff:
+            if not os.path.isfile(shgtif):
+                print 'Saving CONUS SHG tiff file:', shgtif
+                ReprojUseWarpBil(ready_file, shgtif)
+            else:
+                print 'CONUS SHG tiff already exists:', shgtif
 
+    print_dashes()
     return unzip_dir
 
 
@@ -121,8 +137,6 @@ def process_extents(div_name, dist_name, process_date,
     mkdir_p(projascdir)
     mkdir_p(projdssdir)
     mkdir_p(histdir)
-
-    asc2dssdir = os.path.join(topdir, 'Asc2DssGridUtility')
 
     dstr = datetime.datetime.now().strftime('%y%m%d%H%M%S')
     ymdDate = process_date.strftime('%Y%m%d')
@@ -231,7 +245,7 @@ def process_extents(div_name, dist_name, process_date,
 
                 path = "/SHG/" + extentarr[0].upper() + "/" + p[2] + \
                     "/" + p[3] + "/" + p[4] + "/" + p[5] + "/"
-                WriteToDSS(asc2dssdir, projasc, dssfile, dtype, path)
+                WriteToDSS(projasc, dssfile, dtype, path)
                 outarr = None
                 cliparr = None
 
@@ -252,12 +266,12 @@ def process_extents(div_name, dist_name, process_date,
             tmpasc = os.path.join(tmpdir, ascbasename + ".asc")
             projasc = os.path.join(projascdir, ascbasename + ".asc")
 
-            ZeroDStoAsc2(extentGProps[extentarr[0]], ascbasename, tmpdir)
+            WriteZeroDStoAsc(extentGProps[extentarr[0]], ascbasename, tmpdir)
             shutil.copy(tmpasc, projasc)
             shutil.copy(os.path.join(tmpdir, ascbasename + "tmp.prj"),
                         os.path.join(projascdir, ascbasename + ".prj"))
             dssdunits = varprops[3]
-            WriteToDSS2(asc2dssdir, projasc, dssfile, dtype, path, dssdunits)
+            WriteToDSS(projasc, dssfile, dtype, path, dssdunits)
 
     clean_up_tmp_dir(tmpdir)
 
@@ -269,7 +283,11 @@ def process_extents(div_name, dist_name, process_date,
     return dssfile
 
 
-# Helper functions below.  Here be dragons.
+########################################################################
+# Helper functions below.
+########################################################################
+
+
 def CreateASCII(inds, ascname, tmpdir):
     outtmpname = os.path.join(tmpdir, ascname + "tmp.asc")
     ascdriver = gdal.GetDriverByName("AAIGrid")
@@ -568,15 +586,17 @@ def UnzipLinux(origfile_noext, file_noext):
             exit_code = proc.wait()
 
 
-def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
+def WriteToDSS(inasc, outdss, dtype, path, dunits='MM'):
     pname = os.path.dirname(inasc)
     bname = os.path.basename(inasc)
     os.chdir(pname)
-    asc2dsscmd = os.path.join(asc2dssdir, "asc2dssGriddash")
+    
+    asc2dsscmd = os.path.join(config.TOP_DIR, 'Asc2DssGridUtility', 
+                              'asc2dssGriddash')
     cmdlist = [
-        "python", asc2dsscmd, "gridtype=SHG", "dunits=MM",
-        "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
-        "path=" + path
+        'python', asc2dsscmd, 'gridtype=SHG', 'dunits=' + dunits,
+        'dtype=' + dtype, 'in=' + bname, 'dss=' + outdss,
+        'path=' + path
     ]
     if not config.SUBPROCESS_QUIET:
         print pname
@@ -593,30 +613,7 @@ def WriteToDSS(asc2dssdir, inasc, outdss, dtype, path):
     return
 
 
-def WriteToDSS2(asc2dssdir, inasc, outdss, dtype, path, dunits):
-    pname = os.path.dirname(inasc)
-    bname = os.path.basename(inasc)
-    os.chdir(pname)
-    asc2dsscmd = os.path.join(asc2dssdir, "asc2dssGriddash")
-    cmdlist = ["python", asc2dsscmd, "gridtype=SHG", "dunits=" + dunits,
-               "dtype=" + dtype, "in=" + bname, "dss=" + outdss,
-               "path=" + path]
-    if not config.SUBPROCESS_QUIET:
-        print pname
-        print cmdlist
-    proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    exit_code = proc.wait()
-
-    if not config.SUBPROCESS_QUIET:
-        print stdout
-    if exit_code:
-        raise RuntimeError(stderr)
-    return
-
-
-def ZeroDStoAsc2(gProps, ascname, tmpdir):
+def WriteZeroDStoAsc(gProps, ascname, tmpdir):
     xsize = gProps[2]
     ysize = gProps[3]
 

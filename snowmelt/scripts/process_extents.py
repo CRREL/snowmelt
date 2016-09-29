@@ -177,7 +177,6 @@ def main():
     for process_date in process_dates:
         
         # Fetch and transform source data.
-        print 'Fetching source data for:', process_date.strftime('%Y.%m.%d')
         unzip_dir = snowmelt.prepare_source_data_for_date(
             process_date, get_src_dir_by_date(process_date)
         )
@@ -211,7 +210,7 @@ def main():
             else:
                 transfer_list.add(division)
 
-        if not options.keep_tmp_dir and not options.dry_run:
+        if not config.KEEP_PROCESSED_SRC_DATA and not options.dry_run:
             verbose_print('Removing temp unzipped dir: {0}'.format(unzip_dir))
             shutil.rmtree(unzip_dir)
 
