@@ -87,7 +87,8 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
         if save_tiff:
             if not os.path.isfile(shgtif):
                 print 'Saving CONUS SHG tiff file:', shgtif
-                ReprojUseWarpBil(ready_file, shgtif)
+                ReprojUseWarpBil(ready_file, shgtif, nodata=nodata_val,
+                                 tr_x='1000', tr_y='-1000')
             else:
                 print 'CONUS SHG tiff already exists:', shgtif
 
@@ -400,7 +401,8 @@ def RawFileManip(file_noext, masterhdr):
     return file_noext + ".bil"
 
 
-def ReprojUseWarpBil(infile, outfile, ext=None, nodata='-9999'):
+def ReprojUseWarpBil(infile, outfile, ext=None, nodata='-9999',
+                     tr_x='2000', tr_y='-2000'):
     to_srs = ("'+proj=aea +lat_1=29.5n +lat_2=45.5n +lat_0=23.0n "
               "+lon_0=96.0w +x_0=0.0 +y_0=0.0 +units=m +datum=WGS84'")
     from_srs = '"+proj=longlat +datum=WGS84"'
@@ -409,7 +411,7 @@ def ReprojUseWarpBil(infile, outfile, ext=None, nodata='-9999'):
                 "-r", "bilinear",
                 "-srcnodata", nodata,
                 "-dstnodata", nodata,
-                "-tr", "2000", "-2000", "-tap"]
+                "-tr", tr_x, tr_y, "-tap"]
     if ext is not None:
         cmdlist += ["-te", str(ext.xmin), str(ext.ymin),
                            str(ext.xmax), str(ext.ymax),]
