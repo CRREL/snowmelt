@@ -274,6 +274,7 @@ def process_extents(div_name, dist_name, process_date,
             WriteToDSS(projasc, dssfile, dtype, path, dssdunits)
 
     clean_up_tmp_dir(tmpdir)
+    clean_up_tmp_dir(projascdir)
 
     # Write out file to track that we've run for this day.
     with open(histfile, "w") as fo:
