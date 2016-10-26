@@ -581,7 +581,6 @@ def UnzipLinux(origfile_noext, file_noext):
     for output_ext in OUTPUT_EXTS:
         gz_filename = file_noext + output_ext + '.gz'
         if os.path.isfile(file_noext + output_ext + '.gz'):
-            # os.chdir(pname)
             cmdlist = ['gunzip', gz_filename]
             proc = subprocess.Popen(cmdlist, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
@@ -598,8 +597,7 @@ def WriteToDSS(inasc, outdss, dtype, path, dunits='MM'):
                               'asc2dssGriddash')
     cmdlist = [
         'python', asc2dsscmd, 'gridtype=SHG', 'dunits=' + dunits,
-        'dtype=' + dtype, 'in=' + bname, 'dss=' + outdss,
-        'path=' + path
+        'dtype=' + dtype, 'in=' + bname, 'dss=' + outdss, 'path=' + path
     ]
     if not config.SUBPROCESS_QUIET:
         print pname
