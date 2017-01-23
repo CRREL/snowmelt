@@ -129,8 +129,6 @@ def main():
         try:
             extents_list = config.PROJECT_EXTENTS[options.project]
             inputs_list = [('projects', options.project, extents_list)]
-            # Don't run SCP transfer if we're running for a project.
-            options.run_scp = False
         except KeyError:
             print ('Could not find extents list for '
                    'project "{0}"').format(options.project)

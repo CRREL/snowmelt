@@ -6,3 +6,6 @@ export LD_LIBRARY_PATH=/usr/lib64:/usr/lib:/usr/local/lib:/usr/lib/oracle/11.2/c
 
 # Create DSS files for the watersheds.
 /usr/bin/docker exec -i --user u4rrcsgb snowmelt python /fire/study/snow/nohrsc_gdal/snowmelt_app/snowmelt/scripts/process_extents.py --all --scp
+
+# Create DSS file for the Missouri River project.
+/usr/bin/docker exec -i --user u4rrcsgb snowmelt python /fire/study/snow/nohrsc_gdal/snowmelt_app/snowmelt/scripts/process_extents.py -p missouri_river --scp
