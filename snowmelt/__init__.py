@@ -36,8 +36,8 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
     Returns the directory path to the unzipped files,
     or None if missing any source data. '''
     ymd_str = process_date.strftime('%Y%m%d')
-    unzip_dir = os.path.join(config.TOP_DIR, 'unzipped_data', ymd_str)
-    us_tif_dir = os.path.join(config.TOP_DIR, 'conus_tiffs')
+    unzip_dir = os.path.join(config.PROCESSED_SRC_DIR, 'unzipped_data', ymd_str)
+    us_tif_dir = os.path.join(config.PROCESSED_SRC_DIR, 'conus_tiffs')
     
     # Use 'us' prefix and adjust nodata value for dates before January 24, 2011.
     ds_type = 'zz'
@@ -46,7 +46,7 @@ def prepare_source_data_for_date(process_date, src_dir, save_tiff=True):
         ds_type = 'us'
         nodata_val = '55537'
 
-    masterhdr = os.path.join(config.TOP_DIR, 'key', ds_type + '_master.hdr')
+    masterhdr = os.path.join(config.HEADER_KEY_DIR, ds_type + '_master.hdr')
 
     # Create list of file names for this date.
     snodas_src_files = [
@@ -116,8 +116,6 @@ def process_extents(div_name, dist_name, process_date,
         if not options.keep_tmp_dir:
             shutil.rmtree(tmp_dir)
 
-    topdir = config.TOP_DIR
-
     verbose_print('Source directory: {0}'.format(src_dir))
 
     # Use 'us' prefix and adjust nodata value for dates before January 24, 2011.
@@ -127,12 +125,18 @@ def process_extents(div_name, dist_name, process_date,
         dataset_type = 'us'
         nodata_val = '55537'
 
-    projdir = os.path.join(topdir, div_name, dist_name)
+    projdir = os.path.join(config.TOP_DIR, div_name, dist_name)
 
-    projresdir = os.path.join(projdir, 'results_sn')
-    projascdir = os.path.join(projresdir, 'asc_files')
-    projdssdir = os.path.join(projresdir, 'dss_files')
-    histdir = os.path.join(projresdir, 'history')
+    # Use the proper results dir structure based on the config file.
+    if config.LEGACY_DIRECTORY_STRUCTURE:
+        projresdir = os.path.join(projdir, 'results_sn')
+        projascdir = os.path.join(projresdir, 'asc_files')
+        projdssdir = os.path.join(projresdir, 'dss_files')
+        histdir = os.path.join(projresdir, 'history')
+    else:
+        projascdir = os.path.join(settings.ASC_BASE_DIR, div_name, dist_name)
+        projdssdir = os.path.join(settings.DSS_BASE_DIR, div_name, dist_name)
+        histdir = os.path.join(settings.HISTORY_BASE_DIR, div_name, dist_name)
 
     # Build our results directories if needed.
     mkdir_p(projascdir)
@@ -153,7 +157,7 @@ def process_extents(div_name, dist_name, process_date,
         div_name, dist_name, process_date.strftime('%Y.%m.%d')
     )
 
-    tmpdir = os.path.join(projresdir, 'tmp' + dstr)
+    tmpdir = os.path.join(projascdir, 'tmp' + dstr)
     os.mkdir(tmpdir)
 
     # Set up a dictionary mapping the various properties to their DSS names.
