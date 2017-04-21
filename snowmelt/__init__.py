@@ -134,9 +134,9 @@ def process_extents(div_name, dist_name, process_date,
         projdssdir = os.path.join(projresdir, 'dss_files')
         histdir = os.path.join(projresdir, 'history')
     else:
-        projascdir = os.path.join(settings.ASC_BASE_DIR, div_name, dist_name)
-        projdssdir = os.path.join(settings.DSS_BASE_DIR, div_name, dist_name)
-        histdir = os.path.join(settings.HISTORY_BASE_DIR, div_name, dist_name)
+        projascdir = os.path.join(config.ASC_BASE_DIR, div_name, dist_name)
+        projdssdir = os.path.join(config.DSS_BASE_DIR, div_name, dist_name)
+        histdir = os.path.join(config.HISTORY_BASE_DIR, div_name, dist_name)
 
     # Build our results directories if needed.
     mkdir_p(projascdir)
