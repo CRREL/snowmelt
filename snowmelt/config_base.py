@@ -5,7 +5,7 @@ TOP_DIR = '/fire/study/snow/nohrsc_gdal'
 # This is where we look for source files to process.
 SRC_DIR = '/fire/study/snow/rawdata'
 ARCHIVE_DIR = '/fire/study/snow/archive/misc/SNODAS'
-ARCHIVE_DIR_2012 = '/fire/study/snow/rawdata_2012'
+ARCHIVE_DIR_2012 = '/fire/study/snow/rawdata'
 
 # This is where we store the nationwide prepped data sets.
 # Unzipped data and CONUS wide tif files will be store in two dirs
@@ -27,7 +27,7 @@ LEGACY_DIRECTORY_STRUCTURE = False
 SCP_TARGET_STR = \
     'cwmsgrids@cpc-cwms2.usace.army.mil:/netapp/cwmsgrids/data/watershed/{0}/{1}/'
 
-KEEP_PROCESSED_SRC_DATA = True
+KEEP_PROCESSED_SRC_DATA = False
 SUBPROCESS_QUIET = True
 
 EXTENTS = {

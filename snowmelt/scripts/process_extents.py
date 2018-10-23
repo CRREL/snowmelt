@@ -28,13 +28,7 @@ def main():
         # a few different places on rsgis-base.
         if options.src_dir:
             return options.src_dir
-        elif process_date.year > 2012:
-            return config.SRC_DIR
-        elif process_date.year == 2012:
-            return config.ARCHIVE_DIR_2012
-        else:
-            month_path = process_date.strftime('%Y/%B')
-            return os.path.join(config.ARCHIVE_DIR, month_path)
+        return snowmelt.get_src_dir_by_date(proc_date)
 
     def verbose_print(to_print):
         if options.verbose or options.dry_run:
@@ -68,6 +62,11 @@ def main():
          help='Parse extents for a given project, defined in PROJECT_EXTENTS. '
               '--scp is currently disabled for this option.')
 
+    parser.add_option('-c', '--conus-tiff-only', dest='conus_tiff_only',
+        action='store_true', default=False,
+        help='Build the CONUS GeoTiff dataset only, '
+             'do not create DSS files. Defaults to False.')
+
     # Debugging options.
     parser.add_option('--dry-run', dest='dry_run', action='store_true',
         default=False, help='Dry run of the script.')
@@ -82,7 +81,7 @@ def main():
 
     # Only one of the following options may be used at a time.
     # The options disable the use of the division and district args.
-    no_arg_opts = ('all', 'project', 'division')
+    no_arg_opts = ('all', 'project', 'division', 'conus_tiff_only')
     no_arg_opt_count = 0
     for opt in no_arg_opts:
         if options.__dict__[opt]:
@@ -133,6 +132,9 @@ def main():
             print ('Could not find extents list for '
                    'project "{0}"').format(options.project)
             sys.exit(1)
+    elif options.conus_tiff_only:
+        # In tiff only mode we don't produce DSS files.
+        inputs_list = []
     else:
         division, district = args
         try:
@@ -174,9 +176,10 @@ def main():
     # manipulation once per date. 
     for process_date in process_dates:
         
-        # Fetch and transform source data.
+        # Fetch and transform source data and then bail if we ran into errors
+        # or if we are only creating CONUS Tiffs.
         unzip_dir = snowmelt.prepare_source_data_for_date(
-            process_date, get_src_dir_by_date(process_date)
+            process_date, get_src_dir_by_date(process_date), options.conus_tiff_only
         )
         if unzip_dir is None:
             print 'Skipping date:', process_date.strftime('%Y.%m.%d')
@@ -185,8 +188,7 @@ def main():
         for input_list in inputs_list:
             division, district, extents_list = input_list
             verbose_print('-' * 64)
-            verbose_print('{0} {1} Watersheds:'.format(division.upper(), 
-                                                         district.upper()))
+            verbose_print('{0} {1} Watersheds:'.format(division.upper(), district.upper()))
             for extent in extents_list:
                 verbose_print('{0}: {1}'.format(extent[0], extent[1]))
 
